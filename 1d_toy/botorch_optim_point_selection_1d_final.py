@@ -15,6 +15,7 @@ cv_errors = sys.argv[11]
 hf_inputs = sys.argv[12] 
 lf_inputs = sys.argv[13]
 lf_subset = sys.argv[14]
+acq_func = sys.argv[15]
 
 # print arguments with which the script is called to verify correct ordering.
 
@@ -84,7 +85,10 @@ gp = SingleTaskGP(
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_model(mll)
 # acq = LogExpectedImprovement(model=gp, best_f=train_Y.max())
-acq = ExpectedImprovement(model=gp, best_f=train_Y.max())
+if acq_func == "EI":
+    acq = ExpectedImprovement(model=gp, best_f=train_Y.max())
+elif acq_func == "logEI":
+    acq = LogExpectedImprovement(model=gp, best_f=train_Y.max())
 
 
 bounds = torch.stack([torch.tensor(lb), 
@@ -212,7 +216,7 @@ plt.tight_layout()
 # save and remove margins
 plt.savefig(os.path.join(plot_dir, 
             "rep_{:03d}".format(rep_num), 
-            "batch_{:02d}_contours_EI_1d.png".format(batch_num)), 
+            "batch_{:02d}_contours_{}_1d.png".format(batch_num, acq_func)), 
             bbox_inches='tight')
 
 plt.close()

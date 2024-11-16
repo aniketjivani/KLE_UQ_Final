@@ -48,6 +48,8 @@ args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots",
             "BUDGET_HF"=>20,
             "lb" => [40, 30],
             "ub" => [60, 50],
+            "acqFunc" => "EI",
+            # "acqFunc" => "logEI",
        )
 
 sys = pyimport("sys")
@@ -57,6 +59,7 @@ kle_cases = ["gp", "ra"]
 
 lb = args_dict["lb"]
 ub = args_dict["ub"]
+acqFunc = args_dict["acqFunc"]
 
 ## Define grid 
 x = collect(range(0, 0.1; length=250))
@@ -178,11 +181,21 @@ for repID in 1:args_dict["NREPS"]
             end
         end
 
-        push!(case_objects, Dict("gp"=>(cv_gp, oracle_gp, kle_gp)))
-        push!(case_objects, Dict("ra"=>(cv_ra, oracle_ra, kle_ra)))
+        open(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "w") do f
+            pkl.dump(Dict("gp"=>(cv_gp, 
+                        oracle_gp, 
+                        kle_gp),
+                        "ra"=>(cv_ra, 
+                        oracle_ra, 
+                        kle_ra)), 
+                        f)
+        end
 
-        # Save the case objects to file
-        JLD.save(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "case_objects", case_objects)
+        # push!(case_objects, Dict("gp"=>(cv_gp, oracle_gp, kle_gp)))
+        # push!(case_objects, Dict("ra"=>(cv_ra, oracle_ra, kle_ra)))
+
+        # # Save the case objects to file
+        # JLD.save(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "case_objects", case_objects)
 
 
         if batchID == 0
@@ -197,10 +210,12 @@ for repID in 1:args_dict["NREPS"]
                 args_dict["input_dir"],
                 repID,
                 batch_num,
-                log.(cv_gp[2]),
+                # log.(cv_gp[2]),
+                log.(cv_gp),
                 inputsHF_orig,
                 inputsLF_orig,
-                inputsHFSubsetIdx
+                inputsHFSubsetIdx,
+                acqFunc
                 ]
         else
             sys.argv = ["./1d_toy/botorch_optim_point_selection_1d_final.py",
@@ -214,10 +229,12 @@ for repID in 1:args_dict["NREPS"]
             args_dict["input_dir"],
             repID,
             batch_num,
-            log.(cv_gp[2]),
+            # log.(cv_gp[2]),
+            log.(cv_gp),
             inputsHF,
             inputsLF,
-            inputsHFSubsetIdx
+            inputsHFSubsetIdx,
+            acqFunc
             ]
         end
         
