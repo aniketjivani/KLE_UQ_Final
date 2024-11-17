@@ -45,7 +45,8 @@ args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots",
             "input_dir"=> "./1d_toy/1d_inputs",
             "NREPS"=> 1,
             "NFOLDS"=> 5,
-            "BUDGET_HF"=>20,
+            # "BUDGET_HF"=>20,
+            "BUDGET_HF"=>50,
             "lb" => [40, 30],
             "ub" => [60, 50],
             "acqFunc" => "EI",
@@ -87,6 +88,7 @@ end
 
 # repID = 1
 for repID in 1:args_dict["NREPS"]
+# for repID in 2:args_dict["NREPS"]
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
     rd_seed = 20241031 + repID
@@ -96,6 +98,7 @@ for repID in 1:args_dict["NREPS"]
     # we will save separate input files and data files for the randomly acq and the active learnt points but within the same rep dir.
     mkpath(joinpath(args_dict["input_dir"], @sprintf("rep_%03d", repID)))
     mkpath(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID)))
+    mkpath(joinpath(args_dict["plot_dir"], @sprintf("rep_%03d", repID)))
 
     # batchID = 0
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
@@ -181,15 +184,15 @@ for repID in 1:args_dict["NREPS"]
             end
         end
 
-        open(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "w") do f
-            pkl.dump(Dict("gp"=>(cv_gp, 
-                        oracle_gp, 
-                        kle_gp),
-                        "ra"=>(cv_ra, 
-                        oracle_ra, 
-                        kle_ra)), 
-                        f)
-        end
+        npzwrite(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.npz", batchID)), Dict("cv_gp"=> cv_gp,
+            "oracle_gp"=> oracle_gp,
+            # "kle_gp"=> kle_gp,
+            "cv_ra"=> cv_ra,
+            "oracle_ra"=> oracle_ra,
+            # "kle_ra"=> kle_ra
+            ))
+
+        JLD.save(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "kle_gp", kle_gp, "kle_ra", kle_ra)
 
         # push!(case_objects, Dict("gp"=>(cv_gp, oracle_gp, kle_gp)))
         # push!(case_objects, Dict("ra"=>(cv_ra, oracle_ra, kle_ra)))

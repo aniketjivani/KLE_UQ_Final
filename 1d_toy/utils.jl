@@ -1,4 +1,7 @@
 # Other utility functions to generate waveforms, calculate errors, build surrogate with cross-validation strategies etc.
+using Random
+using LinearAlgebra
+
 """
 Function that takes in two parameters, a and b and returns a spiked waveform 
 of the form exp(-ax)*sin(bx)
@@ -24,30 +27,32 @@ function bSineApprox(x, a, b)
     return exp.(-a .* x) .* (3.5 * bx_d .* (180 .- bx_d)) ./ (15000 .- bx_d .* (180 .- bx_d))
 end
 
-function generateLF(x, inputsLF, nPilotLF, batch_num)
+function generateLF(x, inputsLF)
     ng = length(x)
+    nData = size(inputsLF, 1)
 
-    LF_raw_data = zeros(ng, nPilotLF + batch_num)
+    LF_raw_data = zeros(ng, nData)
 
     # assume correct inputsLF have already been loaded in the main() function below.
     # if loading scaled inputs, convert first before passing to data generating function.
 
-    for i in 1:(nPilotLF + batch_num)
+    for i in 1:nData
         LF_raw_data[:, i] = bSineApprox(x, inputsLF[i, 1], inputsLF[i, 2])
     end
 
     return LF_raw_data
 end
 
-function generateHF(x, inputsHF, nPilotHF, batch_num)
+function generateHF(x, inputsHF)
     ng = length(x)
+    nData = size(inputsHF, 1)
 
-    HF_raw_data = zeros(ng, nPilotHF + batch_num)
+    HF_raw_data = zeros(ng, nData)
 
     # assume correct inputsHF have already been loaded in the main() function below.
     # if loading scaled inputs, convert first before passing to data generating function.
 
-    for i in 1:(nPilotHF + batch_num)
+    for i in 1:nData
         HF_raw_data[:, i] = spikedWaveform(x, inputsHF[i, 1], inputsHF[i, 2])
     end
 
@@ -122,7 +127,11 @@ function generateOracleData(grid_a, grid_b, x_data)
     return HF_oracle
 end
 
-function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, grid; useAbsErr=0, nFolds=5, grid_a_scaled=nothing, grid_b_scaled=nothing)
+function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, grid; 
+    all_folds=nothing, 
+    useAbsErr=0, 
+    grid_a_scaled=nothing, 
+    grid_b_scaled=nothing)
 
 	yPredicted = zeros(size(yLF_data, 1), size(xi_HF, 1))
 
@@ -143,10 +152,10 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
 	ng = length(grid)
 		
 	# Loop for general as well as LOO cross-validation model building
-	all_folds = k_folds(HF_LF_ID, nFolds)
+	# all_folds = k_folds(HF_LF_ID, nFolds)
 
 	for (idx, (train_indices, holdout_indices)) in enumerate(all_folds)
-		println(holdout_indices)
+		# println(holdout_indices)
 		holdout_HF_ID = HF_LF_ID[holdout_indices]
 		
 		QLF, λLF, bβLF, regLF, YMeanLF = buildKLE(xi_LF[setdiff(1:end, holdout_HF_ID), :], yLF_data[:, setdiff(1:end, holdout_HF_ID)], grid; kle_kwargs...)
@@ -156,8 +165,8 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
 			ΨTest_LF = PrepCaseA(xi_LF[holdout_HF_ID[1], :]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
 			ΨTest_Δ = PrepCaseA(xi_HF[holdout_indices[1], :]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
 		else
-			ΨTest_LF = PrepCaseA(xi_LF[holdout_HF_ID, :]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
-			ΨTest_Δ = PrepCaseA(xi_HF[holdout_indices, :]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+			ΨTest_LF = PrepCaseA(xi_LF[holdout_HF_ID, :]; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+			ΨTest_Δ = PrepCaseA(xi_HF[holdout_indices, :]; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
 		end
 		# println(size(ΨTest_LF))
 		# println(size(ΨTest_Δ))
@@ -219,7 +228,8 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
 	end
 	
     kleObject = KLEObject(YmLF_all, QLF_all, λLF_all, bβLF_all, regLF_all, YmDelta_all, QDelta_all, λDelta_all, bβDelta_all, regDelta_all)
-	return (yPredicted, LOOErrors), (BF_oracle, oracle_errors), kleObject
+	# return (yPredicted, LOOErrors), (BF_oracle, oracle_errors), kleObject
+    return LOOErrors, oracle_errors, kleObject
 end
 
 
