@@ -85,6 +85,12 @@ gp = SingleTaskGP(
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_model(mll)
 # acq = LogExpectedImprovement(model=gp, best_f=train_Y.max())
+
+# to-do: implement constraint for non-repeated points in acquisition function.
+
+# alternately , strategies with q > 1 for quicker evaluations of oracle performance.
+
+
 if acq_func == "EI":
     acq = ExpectedImprovement(model=gp, best_f=train_Y.max())
 elif acq_func == "logEI":

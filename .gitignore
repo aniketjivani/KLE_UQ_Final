@@ -3,3 +3,5 @@
 *.png
 1d_toy/1d_inputs
 1d_toy/1d_pred_data
+*.jld
+*.txt
