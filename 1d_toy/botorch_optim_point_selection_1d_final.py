@@ -1,7 +1,40 @@
+# %%
 import sys
+import numpy as np
 # %%
 
 # print(sys.argv)
+test_case=False
+
+if test_case:
+    sys.argv = ["./1d_toy/botorch_optim_point_selection_1d_final.py",
+                20241032,
+                40,
+                30,
+                60,
+                50,
+                "./Plots/1d_toy_plots",
+                "./1d_toy/1d_pred_data",
+                "./1d_toy/1d_inputs",
+                1,
+                0,
+                np.array([0.2616, -0.3225, 0.5433, 0.01066, -2.2204]),
+                np.array([[59.397, 30.50],
+                          [40.804, 30.201],
+                          [58.29, 49.49],
+                          [40.402, 49.196],
+                          [50.15, 39.1457],
+                          [59.397, 30.50],
+                          [40.804, 30.201],
+                          [58.29, 49.49],
+                          [40.402, 49.196],
+                          [50.15, 39.1457]]),
+                np.random.rand(200, 2),
+                np.array([39, 105, 120, 138, 156, 39, 105, 120, 138, 156]),
+                "EI"
+                ]
+
+
 
 torch_seed = sys.argv[1]
 lb = [sys.argv[2], sys.argv[3]]
@@ -30,18 +63,19 @@ print("rep_num: ", rep_num)
 print("batch_num: ", batch_num)
 
 # %%
-import numpy as np
 import torch
 import gpytorch
-import botorch
 import os
 import sys
 import pickle
-from botorch.models import SingleTaskGP, FixedNoiseGP, ModelListGP
+from botorch.models import SingleTaskGP
 from botorch.models.transforms import Normalize, Standardize
 from botorch.acquisition.analytic import LogExpectedImprovement, ExpectedImprovement
+# from botorch.fit import fit_gpytorch_mll
 from botorch.fit import fit_gpytorch_model
 from botorch.optim import optimize_acqf
+from scipy.spatial.distance import cdist
+
 
 import matplotlib.pyplot as plt
 from matplotlib import ticker
@@ -76,14 +110,20 @@ nHF = int(hf_inputs.shape[0] / 2)
 train_X = torch.tensor(hf_inputs[:nHF, :], dtype=torch.double)
 train_Y = torch.tensor(cv_errors, dtype=torch.double).unsqueeze(-1)
 
-gp = SingleTaskGP(
-    train_X=train_X,
-    train_Y=train_Y,
-    input_transform=Normalize(d=2),
-)
+
+outcome_transform = Standardize(m=1)
+train_Y_rs = outcome_transform(train_Y)[0]
+# train_Yvar = torch.full_like(train_Y_rs, 1e-6)
+
+gp = SingleTaskGP(train_X=train_X,
+                  train_Y=train_Y_rs,
+                #   train_Yvar=train_Yvar,
+                  input_transform=Normalize(d=2)
+                  )
 
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_model(mll)
+# fit_gpytorch_mll(mll)
 # acq = LogExpectedImprovement(model=gp, best_f=train_Y.max())
 
 # to-do: implement constraint for non-repeated points in acquisition function.
@@ -100,15 +140,83 @@ elif acq_func == "logEI":
 bounds = torch.stack([torch.tensor(lb), 
                       torch.tensor(ub)]).to(torch.double)
 
+
+
+def optimize_acqf_no_repeats(
+    acq_function,
+    bounds,
+    q,
+    past_points,
+    min_dist=5e-4,
+    num_restarts=10,
+    raw_samples=512,
+    ):
+    """
+    Filter out acquired points that are too close to already-sampled ones.
+    """
+    # Use BoTorch's default `optimize_acqf` to get candidate points
+    all_candidates, all_acq_values = optimize_acqf(
+        acq_function=acq_function,
+        bounds=bounds,
+        q=q,  # Generate a large number of candidates
+        num_restarts=num_restarts,
+        raw_samples=raw_samples,
+        return_best_only=False,  # Return all candidate points
+    )
+
+    past_points_np = past_points.cpu().detach().numpy()
+    all_candidates_np = all_candidates.squeeze(dim=1).cpu().detach().numpy()
+
+    # Calculate distances between candidates and past points
+    distances = cdist(all_candidates_np, past_points_np)
+
+    # Filter candidates
+    valid_indices = distances.min(axis=1) >= min_dist
+
+    if valid_indices.any():
+        valid_candidates = all_candidates[valid_indices]
+        valid_acq_values = all_acq_values[valid_indices]
+
+        # Sort valid candidates by acquisition value
+        sorted_indices = valid_acq_values.argsort(descending=True)
+        sorted_candidates = valid_candidates[sorted_indices]
+
+        # Return the top-q candidates and their acquisition values
+        return sorted_candidates[:q], valid_acq_values[sorted_indices][:q]
+    else:
+        sorted_indices = all_acq_values.cpu().detach().numpy().argsort(descending=True)
+        sorted_candidates = all_candidates[sorted_indices]
+        return sorted_candidates[:q], all_acq_values[sorted_indices][:q]
+
 print("Running Acquisition.")
-candidate, acq_value = optimize_acqf(
-    # logEI, 
-    acq,
-    bounds=bounds, 
-    q=1, 
-    num_restarts=5, 
-    raw_samples=20,
-)
+# candidate, acq_value = optimize_acqf(
+#     # logEI, 
+#     acq,
+#     bounds=bounds, 
+#     q=1, 
+#     num_restarts=5, 
+#     raw_samples=20,
+# )
+
+candidate, acq_value = optimize_acqf_no_repeats(acq,
+                                                bounds=bounds,
+                                                q=1,
+                                                past_points=train_X,
+                                                num_restarts=25,
+                                                raw_samples=128
+                                                )
+
+# SOURCE: https://botorch.org/api/optim.html#botorch.optim.optimize.optimize_acqf
+# >>> # generate `q=2` candidates jointly using 20 random restarts
+# >>> # and 512 raw samples
+# >>> candidates, acq_value = optimize_acqf(qEI, bounds, 2, 20, 512)
+# >>> generate `q=3` candidates sequentially using 15 random restarts
+# >>> # and 256 raw samples
+# >>> qEI = qExpectedImprovement(model, best_f=0.2)
+# >>> bounds = torch.tensor([[0.], [1.]])
+# >>> candidates, acq_value_list = optimize_acqf(
+# >>>     qEI, bounds, 3, 15, 256, sequential=True
+# >>> )
 
 print("Acquisition complete.")
 # %% Save GP object to file:
@@ -161,7 +269,7 @@ np.savetxt(os.path.join(input_dir,
 
 #%% Test points for contour plots.
 
-ntest = 30
+ntest = 40
 test_X1 = torch.linspace(lb[0], ub[0], ntest)
 test_X2 = torch.linspace(lb[1], ub[1], ntest)
 
@@ -172,57 +280,61 @@ test_X = torch.stack([test_X1_grid.flatten(), test_X2_grid.flatten()], dim=-1)
 
 # compute the predictive mean and variance
 with torch.no_grad():
-    # posterior_unscaled = gp.outcome_transform.untransform_posterior(gp.posterior(test_X))
     posterior_unscaled = gp.posterior(test_X)
-    mean_gp = posterior_unscaled.mean
-    variance_gp = posterior_unscaled.variance
+    # mean_gp = posterior_unscaled.mean
+    # variance_gp = posterior_unscaled.variance
+
+    posterior_transformed = outcome_transform.untransform_posterior(posterior_unscaled)
+
+    mean_gp = posterior_transformed.mean
+    variance_gp = posterior_transformed.variance
 
     # lower_gp, upper_gp = posterior_dist.mvn.confidence_region()
     # utilities = logEI(test_X.unsqueeze(dim=1))
     utilities = acq(test_X.unsqueeze(dim=1))
 
 
-fig, ax = plt.subplots(1, 3, figsize=(11, 4))
+# fig, ax = plt.subplots(1, 3, figsize=(11, 4))
 
-# plot the predictive mean
-ct1 = ax[0].contourf(test_X1_grid, test_X2_grid, np.exp(mean_gp.reshape(ntest, ntest)), levels=25, cmap='viridis')
-ax[0].set_title('Mean')
-c1 = fig.colorbar(ct1, ax=ax[0], fraction=0.046, pad=0.04)
-# plot the predictive variance
-ct2 = ax[1].contourf(test_X1_grid, test_X2_grid, torch.sqrt(variance_gp.reshape(ntest, ntest)), levels=25, cmap='viridis')
-ax[1].set_title('Std. Dev.')
-c2 = fig.colorbar(ct2, ax=ax[1], fraction=0.046, pad=0.04)
-# plot the utility
-ct3 = ax[2].contourf(test_X1_grid, test_X2_grid, utilities.reshape(ntest, ntest), levels=25, cmap='viridis')
-ax[2].set_title('Utility')
-c3 = fig.colorbar(ct3, ax=ax[2], fraction=0.046, pad=0.04)
-# Now overlay selected candidate on utility plot
-ax[2].scatter(candidate[0][0], candidate[0][1], 
-            s=100,
-            c='gold',
-            marker='*',
-            edgecolors='k',
-            linewidths=1.5,
-            clip_on=False,
-)
+# # plot the predictive mean
+# ct1 = ax[0].contourf(test_X1_grid, test_X2_grid, np.exp(mean_gp.reshape(ntest, ntest)), levels=25, cmap='viridis')
+# ax[0].set_title('Mean')
+# c1 = fig.colorbar(ct1, ax=ax[0], fraction=0.046, pad=0.04)
+# # plot the predictive variance
+# ct2 = ax[1].contourf(test_X1_grid, test_X2_grid, torch.sqrt(variance_gp.reshape(ntest, ntest)), levels=25, cmap='viridis')
+# ax[1].set_title('Std. Dev.')
+# c2 = fig.colorbar(ct2, ax=ax[1], fraction=0.046, pad=0.04)
+# # plot the utility
+# ct3 = ax[2].contourf(test_X1_grid, test_X2_grid, utilities.reshape(ntest, ntest), levels=25, cmap='viridis')
+# ax[2].set_title('Utility')
+# c3 = fig.colorbar(ct3, ax=ax[2], fraction=0.046, pad=0.04)
+# # Now overlay selected candidate on utility plot
+# ax[2].scatter(candidate[0][0], candidate[0][1], 
+#             s=100,
+#             c='gold',
+#             marker='*',
+#             edgecolors='k',
+#             linewidths=1.5,
+#             clip_on=False,
+# )
 
-c1.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
-c2.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
-c3.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+# c1.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+# c2.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+# c3.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
-# change aspect ratio of the plots
-for ia, a in enumerate(ax):
-    a.set_aspect('equal')
-                # c='red', marker='x', s=100)
-    a.set_xlabel(r"$a$")
-    if ia == 0:
-        a.set_ylabel(r"$b$")
-plt.tight_layout()
+# # change aspect ratio of the plots
+# for ia, a in enumerate(ax):
+#     a.set_aspect('equal')
+#                 # c='red', marker='x', s=100)
+#     a.set_xlabel(r"$a$")
+#     if ia == 0:
+#         a.set_ylabel(r"$b$")
+# plt.tight_layout()
 
-# save and remove margins
-plt.savefig(os.path.join(plot_dir, 
-            "rep_{:03d}".format(rep_num), 
-            "batch_{:02d}_contours_{}_1d.png".format(batch_num, acq_func)), 
-            bbox_inches='tight')
+# # save and remove margins
+# plt.savefig(os.path.join(plot_dir, 
+#             "rep_{:03d}".format(rep_num), 
+#             "batch_{:02d}_contours_{}_1d.png".format(batch_num, acq_func)), 
+#             bbox_inches='tight')
 
-plt.close()
+# plt.close()

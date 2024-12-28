@@ -40,17 +40,17 @@ kle_kwargs = (order=3,
             solver="Tikhonov-L2"
             )
 
-args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots",
+args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots_long",
             "data_dir"=> "./1d_toy/1d_pred_data",
             "input_dir"=> "./1d_toy/1d_inputs",
-            "NREPS"=> 1,
+            "NREPS"=> 5,
             "NFOLDS"=> 5,
             # "BUDGET_HF"=>20,
-            "BUDGET_HF"=>50,
+            "BUDGET_HF"=>40,
             "lb" => [40, 30],
             "ub" => [60, 50],
-            "acqFunc" => "EI",
-            # "acqFunc" => "logEI",
+            # "acqFunc" => "EI",
+            "acqFunc" => "logEI",
        )
 
 sys = pyimport("sys")
@@ -88,10 +88,10 @@ end
 
 # repID = 1
 for repID in 1:args_dict["NREPS"]
-# for repID in 2:args_dict["NREPS"]
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
     rd_seed = 20241031 + repID
+    # rd_seed = 20241201 + repID
     Random.seed!(rd_seed)
 
     # make input directory for this replication
@@ -100,7 +100,7 @@ for repID in 1:args_dict["NREPS"]
     mkpath(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID)))
     mkpath(joinpath(args_dict["plot_dir"], @sprintf("rep_%03d", repID)))
 
-    # batchID = 0
+    batchID = 0
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
         if batchID == 0
             isPilot = true
@@ -184,7 +184,10 @@ for repID in 1:args_dict["NREPS"]
             end
         end
 
-        npzwrite(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.npz", batchID)), Dict("cv_gp"=> cv_gp,
+        npzwrite(joinpath(args_dict["data_dir"], 
+        # args_dict["rep_dir"],
+        @sprintf("rep_%03d", repID), 
+        @sprintf("case_objects_batch_%03d.npz", batchID)), Dict("cv_gp"=> cv_gp,
             "oracle_gp"=> oracle_gp,
             # "kle_gp"=> kle_gp,
             "cv_ra"=> cv_ra,
@@ -192,7 +195,10 @@ for repID in 1:args_dict["NREPS"]
             # "kle_ra"=> kle_ra
             ))
 
-        JLD.save(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("case_objects_batch_%03d.jld", batchID)), "kle_gp", kle_gp, "kle_ra", kle_ra)
+        JLD.save(joinpath(args_dict["data_dir"], 
+        # args_dict["rep_dir"],
+        @sprintf("rep_%03d", repID), 
+        @sprintf("case_objects_batch_%03d.jld", batchID)), "kle_gp", kle_gp, "kle_ra", kle_ra)
 
         # push!(case_objects, Dict("gp"=>(cv_gp, oracle_gp, kle_gp)))
         # push!(case_objects, Dict("ra"=>(cv_ra, oracle_ra, kle_ra)))
@@ -258,11 +264,18 @@ for repID in 1:args_dict["NREPS"]
         @pyinclude "./1d_toy/botorch_optim_point_selection_1d_final.py"
 
         gp = py"gp"
-        utilities = py"acq"
+        utilities = py"utilities"
+        mean_gp = py"mean_gp"
+        var_gp = py"variance_gp"
 
-        open(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("gp_batch_%02d.pkl", batchID)), "w") do f
+        open(joinpath(args_dict["data_dir"], 
+            # args_dict["rep_dir"],
+            @sprintf("rep_%03d", repID), 
+            @sprintf("gp_batch_%02d.pkl", batchID)), "w") do f
             pkl.dump(Dict("gp"=>gp,
-                        "utilities"=>utilities), f)
+                        "utilities"=>utilities,
+                        "mean_gp"=>mean_gp,
+                        "var_gp"=>var_gp), f)
         end
 
     end
