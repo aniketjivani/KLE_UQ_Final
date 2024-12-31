@@ -75,6 +75,7 @@ from botorch.acquisition.analytic import LogExpectedImprovement, ExpectedImprove
 from botorch.fit import fit_gpytorch_model
 from botorch.optim import optimize_acqf
 from scipy.spatial.distance import cdist
+from gpytorch.kernels import MaternKernel, ScaleKernel, RQKernel
 
 
 import matplotlib.pyplot as plt
@@ -115,10 +116,15 @@ outcome_transform = Standardize(m=1)
 train_Y_rs = outcome_transform(train_Y)[0]
 # train_Yvar = torch.full_like(train_Y_rs, 1e-6)
 
+# kernel_fn = ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=2))
+kernel_fn = ScaleKernel(RQKernel(ard_num_dims=2))
+
+
 gp = SingleTaskGP(train_X=train_X,
                   train_Y=train_Y_rs,
                 #   train_Yvar=train_Yvar,
-                  input_transform=Normalize(d=2)
+                  input_transform=Normalize(d=2),
+                  covar_module=kernel_fn
                   )
 
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(gp.likelihood, gp)
@@ -176,16 +182,18 @@ def optimize_acqf_no_repeats(
     if valid_indices.any():
         valid_candidates = all_candidates[valid_indices]
         valid_acq_values = all_acq_values[valid_indices]
-
-        # Sort valid candidates by acquisition value
         sorted_indices = valid_acq_values.argsort(descending=True)
         sorted_candidates = valid_candidates[sorted_indices]
 
-        # Return the top-q candidates and their acquisition values
+        print("Found new point")
+
         return sorted_candidates[:q], valid_acq_values[sorted_indices][:q]
     else:
-        sorted_indices = all_acq_values.cpu().detach().numpy().argsort(descending=True)
+        sorted_indices = all_acq_values.argsort(descending=True)
         sorted_candidates = all_candidates[sorted_indices]
+
+        print("Repeated point")
+
         return sorted_candidates[:q], all_acq_values[sorted_indices][:q]
 
 print("Running Acquisition.")
@@ -199,12 +207,12 @@ print("Running Acquisition.")
 # )
 
 candidate, acq_value = optimize_acqf_no_repeats(acq,
-                                                bounds=bounds,
-                                                q=1,
-                                                past_points=train_X,
-                                                num_restarts=25,
-                                                raw_samples=128
-                                                )
+                        bounds=bounds,
+                        q=1,                                    
+                        past_points=train_X,
+                        num_restarts=15,
+                        raw_samples=128
+                        )
 
 # SOURCE: https://botorch.org/api/optim.html#botorch.optim.optimize.optimize_acqf
 # >>> # generate `q=2` candidates jointly using 20 random restarts

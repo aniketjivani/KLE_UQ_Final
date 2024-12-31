@@ -18,6 +18,7 @@ using Printf
 using JLD
 using Combinatorics
 
+
 include("./kleUtils.jl")
 include("./utils.jl")
 
@@ -43,10 +44,10 @@ kle_kwargs = (order=3,
 args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots_long",
             "data_dir"=> "./1d_toy/1d_pred_data",
             "input_dir"=> "./1d_toy/1d_inputs",
-            "NREPS"=> 5,
+            "NREPS"=> 1,
             "NFOLDS"=> 5,
             # "BUDGET_HF"=>20,
-            "BUDGET_HF"=>40,
+            "BUDGET_HF"=>50,
             "lb" => [40, 30],
             "ub" => [60, 50],
             # "acqFunc" => "EI",
