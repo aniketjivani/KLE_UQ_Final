@@ -35,7 +35,6 @@ if test_case:
                 ]
 
 
-
 torch_seed = sys.argv[1]
 lb = [sys.argv[2], sys.argv[3]]
 ub = [sys.argv[4], sys.argv[5]]
@@ -51,7 +50,6 @@ lf_subset = sys.argv[14]
 acq_func = sys.argv[15]
 
 # print arguments with which the script is called to verify correct ordering.
-
 print("Running Bayesian Optimization with the following arguments: ")
 print("torch_seed: ", torch_seed)
 print("lb: ", lb)
