@@ -6,6 +6,7 @@ from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
 import numpy as np
+import torch
 import pickle
 import os
 import sys
@@ -152,8 +153,8 @@ rep_inputs_rq = os.path.join(inputs_dir, "rep_{:03d}_{}".format(chosen_rep, acq_
 # %%
 
 def oracle_cv_comparisons(acq_data_dir, acq_inputs_dir):
-      fig, ax = plt.subplots(NBATCH, 2, figsize=np.array([225, 3400])/25.4)
-      for nb in range(NBATCH):
+      fig, ax = plt.subplots(NBATCH, 1, figsize=np.array([225, 3400])/25.4)
+      for nb in range(1):
        batch_obj = np.load(os.path.join(acq_data_dir,
                               "case_objects_batch_{:03d}.npz".format(nb)))
           
@@ -164,28 +165,38 @@ def oracle_cv_comparisons(acq_data_dir, acq_inputs_dir):
        oracle_err_gp = batch_obj["oracle_gp"]
        oracle_err_ra = batch_obj["oracle_ra"]
 
-       c0 = ax[nb, 0].imshow(oracle_err_gp,
-                             origin="lower",
-                             cmap='viridis')
+       oracle_flat = torch.tensor(np.log(oracle_err_gp[::2, ::2])).reshape(-1, 1)
+
+       # c0 = ax[nb, 0].imshow(oracle_err_gp,
+       #                       origin="lower",
+       #                       cmap='viridis')
        
-       ct0 = fig.colorbar(c0, ax=ax[nb, 0], fraction=0.046, pad=0.04)
+       # ct0 = fig.colorbar(c0, ax=ax[nb, 0], fraction=0.046, pad=0.04)
 
-       c1 = ax[nb, 1].imshow(oracle_err_ra,
-                             origin="lower",
-                             cmap='viridis')
+       oracle_centered = oracle_flat - oracle_flat.mean()
+
+       err_gp_cov = torch.matmul(oracle_centered, oracle_centered.transpose(0, 1)) / (100 * 100 - 1)
+
+       ax[nb].imshow(err_gp_cov,
+                     origin="lower",
+                     cmap="viridis")
+
+       # c1 = ax[nb, 1].imshow(oracle_err_ra,
+       #                       origin="lower",
+       #                       cmap='viridis')
        
-       ct1 = fig.colorbar(c1, ax=ax[nb, 1], fraction=0.046, pad=0.04)
+       # ct1 = fig.colorbar(c1, ax=ax[nb, 1], fraction=0.046, pad=0.04)
 
-       ct0.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
-       ct1.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+       # ct0.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+       # ct1.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
-       ax[nb, 0].set_ylabel(r"$b$")
-       for ia, a in enumerate(ax[nb, :]):
-            a.set_aspect('equal')
+       # ax[nb, 0].set_ylabel(r"$b$")
+       # for ia, a in enumerate(ax[nb, :]):
+       #      a.set_aspect('equal')
 
 
-      for ia, a in enumerate(ax[-1, :]):
-        a.set_xlabel(r"$a$")
+#       for ia, a in enumerate(ax[-1, :]):
+#         a.set_xlabel(r"$a$")
 
       fig.tight_layout()
       #       fig.suptitle("Oracle GP vs RA Errors")
