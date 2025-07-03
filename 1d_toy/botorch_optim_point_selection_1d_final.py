@@ -114,8 +114,9 @@ outcome_transform = Standardize(m=1)
 train_Y_rs = outcome_transform(train_Y)[0]
 # train_Yvar = torch.full_like(train_Y_rs, 1e-6)
 
-# kernel_fn = ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=2))
-kernel_fn = ScaleKernel(RQKernel(ard_num_dims=2))
+kernel_fn = ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=2))
+# kernel_fn = ScaleKernel(RQKernel(ard_num_dims=2))
+# kernel_fn = ScaleKernel(LinearKernel(ard_num_dims=2))
 
 
 gp = SingleTaskGP(train_X=train_X,
