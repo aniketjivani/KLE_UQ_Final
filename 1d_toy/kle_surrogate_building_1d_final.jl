@@ -17,11 +17,10 @@ using Term.Progress
 using Printf
 using JLD
 using Combinatorics
+using Serialization
 
-
-include("./kleUtils.jl")
-include("./utils.jl")
-
+include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/kleUtils.jl")
+include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/utils.jl")
 
 kle_kwargs_Δ = (useFullGrid=1,
             getAllModes=0,
@@ -41,18 +40,38 @@ kle_kwargs = (order=3,
             solver="Tikhonov-L2"
             )
 
-args_dict = Dict("plot_dir"=> "./Plots/1d_toy_plots_long",
-            "data_dir"=> "./1d_toy/1d_pred_data",
-            "input_dir"=> "./1d_toy/1d_inputs",
-            "NREPS"=> 1,
+dict_case1 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c1_all_modes",
+            "data_dir"=> "./1d_toy/1d_pred_data_c1_all_modes",
+            "input_dir"=> "./1d_toy/1d_inputs_c1_all_modes",
+            "NREPS"=> 5,
             "NFOLDS"=> 5,
             # "BUDGET_HF"=>20,
             "BUDGET_HF"=>50,
             "lb" => [40, 30],
             "ub" => [60, 50],
-            # "acqFunc" => "EI",
-            "acqFunc" => "logEI",
+            "acqFunc" => "EI",
+            "chosen_lf" => "bSine"
+            # "acqFunc" => "logEI",
        )
+
+dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
+            "data_dir"=> "./1d_toy/1d_pred_data_c2",
+            "input_dir"=> "./1d_toy/1d_inputs_c2",
+            "NREPS"=> 5,
+            "NFOLDS"=> 5,
+            "BUDGET_HF"=>50,
+            "lb" => [40, 60],
+            "ub" => [60, 80],
+            "acqFunc" => "EI",
+            "chosen_lf" => "taylor"
+       )
+
+chosen_case = 2
+if chosen_case == 1
+    args_dict = dict_case1
+elseif chosen_case == 2
+    args_dict = dict_case2
+end
 
 sys = pyimport("sys")
 pkl = pyimport("pickle")
@@ -78,20 +97,37 @@ b_grid_scaled = 2 * (b_grid .- (1/2)*(lb[2] + ub[2])) ./ (ub[2] - lb[2])
 
 # check if HF oracle file exists, if not, generate data and save to file.
 
-if !isfile("./1d_toy/HF_Oracle.jld")
+if !isfile(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case))
     HF_oracle = generateOracleData(a_grid, b_grid, x)
-    JLD.save("./1d_toy/HF_Oracle.jld", "HF_oracle", HF_oracle)
+    JLD.save(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case), "HF_oracle", HF_oracle)
 else
-    HF_oracle = JLD.load("./1d_toy/HF_Oracle.jld")["HF_oracle"]
+    HF_oracle = JLD.load(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case))["HF_oracle"]
 end
+
+function to_dict(obj::KLEObject)
+    return Dict(
+        "YmLF" => obj.YmLF,
+        "QLF" => obj.QLF,
+        "λLF" => obj.λLF,
+        "bβLF" => obj.bβLF,
+        "regLF" => obj.regLF,
+        "YmDelta" => obj.YmDelta,
+        "QDelta" => obj.QDelta,
+        "λDelta" => obj.λDelta,
+        "bβDelta" => obj.bβDelta,
+        "regDelta" => obj.regDelta
+    )
+end
+
 
 ## Loop for building surrogate
 
 # repID = 1
+# for repID in 1:args_dict["NREPS"]
 for repID in 1:args_dict["NREPS"]
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
-    rd_seed = 20241031 + repID
+    rd_seed = 20250531 + repID
     # rd_seed = 20241201 + repID
     Random.seed!(rd_seed)
 
@@ -152,10 +188,10 @@ for repID in 1:args_dict["NREPS"]
             inputsHF_orig = 0.5 * inputsHF .* (ub - lb)' .+ 0.5 * (ub + lb)'
             # input data is split into two parts: first half is GP points, second half is points through random acquisition. (The first k points in each are identical). We run the surrogate building loop twice, once for each half.
 
-            LF_data = generateLF(x, inputsLF_orig)
+            LF_data = generateLF(x, inputsLF_orig; chosen_lf=args_dict["chosen_lf"])
             HF_data = generateHF(x, inputsHF_orig)
         else
-            LF_data = generateLF(x, inputsLF)
+            LF_data = generateLF(x, inputsLF; chosen_lf=args_dict["chosen_lf"])
             HF_data = generateHF(x, inputsHF)
         end
 
@@ -196,10 +232,16 @@ for repID in 1:args_dict["NREPS"]
             # "kle_ra"=> kle_ra
             ))
 
-        JLD.save(joinpath(args_dict["data_dir"], 
-        # args_dict["rep_dir"],
-        @sprintf("rep_%03d", repID), 
-        @sprintf("case_objects_batch_%03d.jld", batchID)), "kle_gp", kle_gp, "kle_ra", kle_ra)
+        # JLD.save(joinpath(args_dict["data_dir"], 
+        # # args_dict["rep_dir"], @sprintf("rep_%03d", repID), 
+        # @sprintf("case_objects_batch_%03d.jld", batchID)), Dict("kle_gp" => kle_gp, "kle_ra" => kle_ra))
+
+        open(joinpath(args_dict["data_dir"],
+            # args_dict["rep_dir"],
+            @sprintf("rep_%03d", repID),
+              @sprintf("case_objects_batch_%03d.jls", batchID)), "w") do io
+        serialize(io, (kle_gp, kle_ra))
+        end
 
         # push!(case_objects, Dict("gp"=>(cv_gp, oracle_gp, kle_gp)))
         # push!(case_objects, Dict("ra"=>(cv_ra, oracle_ra, kle_ra)))

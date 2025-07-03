@@ -27,7 +27,7 @@ function bSineApprox(x, a, b)
     return exp.(-a .* x) .* (3.5 * bx_d .* (180 .- bx_d)) ./ (15000 .- bx_d .* (180 .- bx_d))
 end
 
-function generateLF(x, inputsLF)
+function generateLF(x, inputsLF; chosen_lf="taylor")
     ng = length(x)
     nData = size(inputsLF, 1)
 
@@ -37,7 +37,12 @@ function generateLF(x, inputsLF)
     # if loading scaled inputs, convert first before passing to data generating function.
 
     for i in 1:nData
-        LF_raw_data[:, i] = bSineApprox(x, inputsLF[i, 1], inputsLF[i, 2])
+        if chosen_lf == "taylor"
+            LF_raw_data[:, i] = taylorApprox(x, inputsLF[i, 1], inputsLF[i, 2])
+        
+        elseif chosen_lf == "bSine"
+            LF_raw_data[:, i] = bSineApprox(x, inputsLF[i, 1], inputsLF[i, 2])
+        end
     end
 
     return LF_raw_data
