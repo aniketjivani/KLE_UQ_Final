@@ -18,6 +18,7 @@ using Printf
 using JLD
 using Combinatorics
 using Serialization
+using Plots
 
 include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/kleUtils.jl")
 include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/utils.jl")
@@ -49,9 +50,9 @@ dict_case1 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c1_all_modes",
             "BUDGET_HF"=>50,
             "lb" => [40, 30],
             "ub" => [60, 50],
+            # "acqFunc" => "EI",
+            "chosen_lf" => "bSine",
             "acqFunc" => "EI",
-            "chosen_lf" => "bSine"
-            # "acqFunc" => "logEI",
        )
 
 dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
@@ -62,9 +63,28 @@ dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
             "BUDGET_HF"=>50,
             "lb" => [40, 60],
             "ub" => [60, 80],
+            "chosen_lf" => "taylor",
             "acqFunc" => "EI",
-            "chosen_lf" => "taylor"
        )
+
+@assert dict_case1["acqFunc"] == dict_case2["acqFunc"]
+
+if kle_kwargs_Δ.getAllModes == 1
+    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_all_modes", dict_case1["acqFunc"])
+    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_all_modes", dict_case1["acqFunc"])
+    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_all_modes", dict_case2["acqFunc"])
+    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_all_modes", dict_case2["acqFunc"])
+    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_all_modes", dict_case1["acqFunc"])
+    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_all_modes", dict_case2["acqFunc"])
+elseif kle_kwargs_Δ.getAllModes == 0
+    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s", dict_case1["acqFunc"])
+    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s", dict_case1["acqFunc"])
+    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s", dict_case2["acqFunc"])
+    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s", dict_case2["acqFunc"])
+    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s", dict_case1["acqFunc"])
+    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s", dict_case2["acqFunc"])
+end
+
 
 chosen_case = 2
 if chosen_case == 1
@@ -191,6 +211,8 @@ for repID in 1:args_dict["NREPS"]
             LF_data = generateLF(x, inputsLF_orig; chosen_lf=args_dict["chosen_lf"])
             HF_data = generateHF(x, inputsHF_orig)
         else
+            inputsLF_orig = 2 * (inputsLF .- (1/2)*(lb + ub)') ./ (ub - lb)'
+            inputsHF_orig = 2 * (inputsHF .- (1/2)*(lb + ub)') ./ (ub - lb)'
             LF_data = generateLF(x, inputsLF; chosen_lf=args_dict["chosen_lf"])
             HF_data = generateHF(x, inputsHF)
         end
@@ -204,20 +226,40 @@ for repID in 1:args_dict["NREPS"]
         case_objects = []
         cv_gp, oracle_gp, kle_gp = nothing, nothing, nothing
         cv_ra, oracle_ra, kle_ra = nothing, nothing, nothing
-        for case in kle_cases
-            println("Rebuilding surrogate for case $case")
-            if case == "gp"
-                cv_gp, oracle_gp, kle_gp = evaluateKLE(inputsLF[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], x; 
-                useAbsErr=0, 
-                all_folds=k_folds_batch, 
-                grid_a_scaled=a_grid_scaled, 
-                grid_b_scaled=b_grid_scaled)
-            elseif case == "ra"
-                cv_ra, oracle_ra, kle_ra = evaluateKLE(inputsLF[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], x; 
-                useAbsErr=0,
-                all_folds=k_folds_batch, 
-                grid_a_scaled=a_grid_scaled, 
-                grid_b_scaled=b_grid_scaled)
+        
+        if batchID == 0
+            for case in kle_cases
+                println("Rebuilding surrogate for case $case")
+                if case == "gp"
+                    cv_gp, oracle_gp, kle_gp = evaluateKLE(inputsLF[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], x; 
+                    useAbsErr=0, 
+                    all_folds=k_folds_batch, 
+                    grid_a_scaled=a_grid_scaled, 
+                    grid_b_scaled=b_grid_scaled)
+                elseif case == "ra"
+                    cv_ra, oracle_ra, kle_ra = evaluateKLE(inputsLF[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], x; 
+                    useAbsErr=0,
+                    all_folds=k_folds_batch, 
+                    grid_a_scaled=a_grid_scaled, 
+                    grid_b_scaled=b_grid_scaled)
+                end
+            end
+        else
+            for case in kle_cases
+                println("Rebuilding surrogate for case $case")
+                if case == "gp"
+                    cv_gp, oracle_gp, kle_gp = evaluateKLE(inputsLF_orig[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF_orig[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], x; 
+                    useAbsErr=0, 
+                    all_folds=k_folds_batch, 
+                    grid_a_scaled=a_grid_scaled, 
+                    grid_b_scaled=b_grid_scaled)
+                elseif case == "ra"
+                    cv_ra, oracle_ra, kle_ra = evaluateKLE(inputsLF_orig[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF_orig[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], x; 
+                    useAbsErr=0,
+                    all_folds=k_folds_batch, 
+                    grid_a_scaled=a_grid_scaled, 
+                    grid_b_scaled=b_grid_scaled)
+                end
             end
         end
 
