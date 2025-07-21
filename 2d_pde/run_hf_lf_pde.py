@@ -51,7 +51,7 @@ def getPhiForThetaFOU(gridQuantities, u_vel, v_vel, theta_s=0.01, theta_h=0.05, 
     for i in range(nx):
         for j in range(ny):
             omega[i, j] = ((theta_s) / (2 * np.pi * theta_h**2)) * (np.exp(-((theta_x - xm[i]) ** 2 + (theta_y - ym[j]) ** 2) / (2 * theta_h ** 2)) - np.exp(-((xm[i] - theta_x + 0.05) ** 2 + (ym[j] - theta_y + 0.05) ** 2) / (2 * theta_h ** 2)))
-
+    phi_sols = []
     CFL = 0.8
     maxU = np.max(np.abs(u_vel))
     maxU = np.max([maxU, np.max(np.abs(v_vel))])
@@ -75,8 +75,7 @@ def getPhiForThetaFOU(gridQuantities, u_vel, v_vel, theta_s=0.01, theta_h=0.05, 
         phi_jp1 = np.roll(phi_old, -1, axis=1)
 
         # Diffusion (explicit)
-        diff = alpha * dxi2 * (phi_ip1 - 2 * phi_old + phi_im1)
-        diff += alpha * dyi2 * (phi_jm1 - 2 * phi_old + phi_jp1)
+        diff = alpha * dxi2 * (phi_ip1 - 2 * phi_old + phi_im1) + alpha * dyi2 * (phi_jm1 - 2 * phi_old + phi_jp1)
 
         ue = u_vel[1:, :]
         uw = u_vel[:-1, :]
@@ -87,7 +86,7 @@ def getPhiForThetaFOU(gridQuantities, u_vel, v_vel, theta_s=0.01, theta_h=0.05, 
         phi_w = np.where(uw > 0, phi_jm1, phi_old)
 
         phi_n = np.where(un > 0, phi_old, phi_ip1)
-        phi_s = np.where(us > 0, phi_jm1, phi_old)
+        phi_s = np.where(us > 0, phi_im1, phi_old)
 
         conv_x = dxi * (ue * phi_e - uw * phi_w)
         conv_y = dyi * (un * phi_n - us * phi_s)
@@ -96,7 +95,8 @@ def getPhiForThetaFOU(gridQuantities, u_vel, v_vel, theta_s=0.01, theta_h=0.05, 
         phi = phi_old + dt * (conv + diff + omega)
 
         phi_old = phi.copy()
-    return omega, phi.T
+        phi_sols.append(phi_old.T)
+    return omega, phi.T, phi_sols
 
 # %%
 def plotPhiForThetaGeneric(gridQuantities, sid, u_vel, v_vel, 
