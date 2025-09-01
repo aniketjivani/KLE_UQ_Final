@@ -1,7 +1,10 @@
 # %%
 # use data generated from `fig_bf_surrogate_uncertainty.jl` to visualize forward UQ based on different surrogate predictions.
 
-# to viz mean predictions errors, use data generated from `fig_bf_surrogate_uncertainty_stagewise.jl`.
+# to viz mean predictions errors, use data generated from `fig_bf_surrogate_uncertainty_stagewise.jl` (not used for paper)
+
+# for HF KLE use KLE built with both sets of points (generated via `fig_bf_hf_kle_oracle_performance.jl`)
+
 import os
 import numpy as np
 import math
@@ -20,6 +23,7 @@ sys.path.insert(0, "/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/")
 import register_parula as rp
 parula_colors = rp._parula_data
 saveFig = False
+use_cumulative_HF = True
 
 plt.style.use('seaborn-v0_8-whitegrid')
 plt.rc("font", family="serif")
@@ -45,7 +49,7 @@ COLORS = {
 
 # %%
 
-chosen_case = 1
+chosen_case = 2
 # chosen_case = 1
 chosen_rep = 1
 chosen_acq = "EI"
@@ -56,12 +60,23 @@ surr_pred_filepath = os.path.join(data_dir, "rep_{:03d}".format(chosen_rep), "al
 
 surr_preds = np.load(surr_pred_filepath, allow_pickle=True)
 
+hf_cumulative_filepath = os.path.join(data_dir, "rep_{:03d}".format(chosen_rep), "hf_surr_oracle_predictions_cumulative.npz")
+
+hf_cumulative_preds = np.load(hf_cumulative_filepath, allow_pickle=True)['HF_cumulative_oracle']
+
 BF_oracle_gp = surr_preds["BF_oracle_gp"]
 LF_oracle_gp = surr_preds["LF_oracle_gp"]
-HF_oracle_gp = surr_preds["HF_oracle_gp"]
+# HF_oracle_gp = surr_preds["HF_oracle_gp"]
 BF_oracle_ra = surr_preds["BF_oracle_ra"]
 LF_oracle_ra = surr_preds["LF_oracle_ra"]
-HF_oracle_ra = surr_preds["HF_oracle_ra"]
+# HF_oracle_ra = surr_preds["HF_oracle_ra"]
+
+if use_cumulative_HF:
+    HF_oracle_gp = np.copy(hf_cumulative_preds)
+    HF_oracle_ra = np.copy(hf_cumulative_preds)
+else:
+    HF_oracle_gp = surr_preds["HF_oracle_gp"]
+    HF_oracle_ra = surr_preds["HF_oracle_ra"]
 
 
 # %%
@@ -175,14 +190,15 @@ if saveFig:
 
 # %%
 
-err_data = np.load(os.path.join(data_dir, "rep_{:03d}".format(chosen_rep), "all_surr_predictions_err.npz"), allow_pickle=True)
+# err_data = np.load(os.path.join(data_dir, "rep_{:03d}".format(chosen_rep), "all_surr_predictions_err.npz"), allow_pickle=True)
 
-mean_HF_err_gp = err_data["mean_HF_err_gp"]
-mean_HF_err_ra = err_data["mean_HF_err_ra"]
-mean_BF_err_gp = err_data["mean_BF_err_gp"]
-mean_BF_err_ra = err_data["mean_BF_err_ra"]
+# mean_HF_err_gp = err_data["mean_HF_err_gp"]
+# mean_HF_err_ra = err_data["mean_HF_err_ra"]
+# mean_BF_err_gp = err_data["mean_BF_err_gp"]
+# mean_BF_err_ra = err_data["mean_BF_err_ra"]
 
 # %%
-# save prediction object for HF KLE cumulative.
+# plot imshow for prediction errors on grid.
+
 
 
