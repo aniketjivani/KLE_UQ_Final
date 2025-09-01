@@ -19,7 +19,7 @@ include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/kleUtils.jl")
 include("/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/utils.jl")
 
 
-generate_KLE_oracle = true
+generate_KLE_oracle = false
 generate_surr_predictions = true
 chosen_case = 2  # 1 or 2
 
@@ -104,6 +104,7 @@ end
 
 sys = pyimport("sys")
 pkl = pyimport("pickle")
+np = pyimport("numpy")
 
 kle_cases = ["gp", "ra"]
 
@@ -123,8 +124,8 @@ a_grid = collect(range(lb[1], ub[1]; length=200))
 b_grid = collect(range(lb[2], ub[2]; length=200))
 
 # scale a_grid and b_grid to lie between -1 and +1.
-a_grid_scaled = 2 * (a_grid .- (1/2)*(lb[1] + ub[1])) ./ (ub[1] - lb[1])
-b_grid_scaled = 2 * (b_grid .- (1/2)*(lb[2] + ub[2])) ./ (ub[2] - lb[2])
+grid_a_scaled = 2 * (a_grid .- (1/2)*(lb[1] + ub[1])) ./ (ub[1] - lb[1])
+grid_b_scaled = 2 * (b_grid .- (1/2)*(lb[2] + ub[2])) ./ (ub[2] - lb[2])
 
 
 # # convert deserialized data to numpy arrays
@@ -134,6 +135,7 @@ b_grid_scaled = 2 * (b_grid .- (1/2)*(lb[2] + ub[2])) ./ (ub[2] - lb[2])
 
 if generate_KLE_oracle
     for repID in 1:args_dict["NREPS"]
+    # for repID in 1:1
         println("Starting repetition $repID ...")
         rd_seed = 20250531 + repID
         Random.seed!(rd_seed)
@@ -202,8 +204,12 @@ else
 end
 
 # make predictions on 200 x 200 grid for each surrogate and save the results.
+
+
 if generate_surr_predictions
     for repID in 1:args_dict["NREPS"]
+    # for repID in 1:1
+        BF_oracle_gp, LF_oracle_gp, HF_oracle_gp, BF_oracle_ra, LF_oracle_ra, HF_oracle_ra = nothing, nothing, nothing, nothing, nothing, nothing
         println("Starting repetition $repID ...")
         rd_seed = 20250531 + repID
         Random.seed!(rd_seed)
@@ -258,7 +264,7 @@ if generate_surr_predictions
                         klModes_Δ_oracle = QDelta_oracle .* sqrt.(λDelta_oracle)'
                         klModes_HF_oracle = QHF_oracle .* sqrt.(λHF_oracle)'
 
-                        BF_oracle_ra[i, j, :] = (klModes_LF_oracle * bβLF_oracle * ΨTest_LF_oracle) + YMeanLF_oracle + (klModes_Δ_oracle * bβDelta_oracle * ΨTest_Δ) + YMeanDelta_oracle
+                        BF_oracle_ra[i, j, :] = (klModes_LF_oracle * bβLF_oracle * ΨTest_LF_oracle) + YMeanLF_oracle + (klModes_Δ_oracle * bβDelta_oracle * ΨTest_Δ_oracle) + YMeanDelta_oracle
 
                         LF_oracle_ra[i, j, :] = (klModes_LF_oracle * bβLF_oracle * ΨTest_LF_oracle) + YMeanLF_oracle
                         
@@ -267,19 +273,19 @@ if generate_surr_predictions
                 end
             end
         end
-        npzwrite(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), @sprintf("all_surr_oracle_predictions_%s_final.npz", case)), Dict("BF_oracle_gp"=>BF_oracle_gp, "LF_oracle_gp"=>LF_oracle_gp, "HF_oracle_gp"=>HF_oracle_gp, "BF_oracle_ra"=>BF_oracle_ra, "LF_oracle_ra"=>LF_oracle_ra, "HF_oracle_ra"=>HF_oracle_ra))
-        println("Finished replication $repID for case: $case")
+        # npzwrite(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), "all_surr_oracle_predictions_final.npz"), Dict("BF_oracle_gp"=>BF_oracle_gp, "LF_oracle_gp"=>LF_oracle_gp, "HF_oracle_gp"=>HF_oracle_gp, "BF_oracle_ra"=>BF_oracle_ra, "LF_oracle_ra"=>LF_oracle_ra, "HF_oracle_ra"=>HF_oracle_ra))
+
+        # open(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), "all_surr_oracle_predictions_final.jls"), "w") do io
+        #     serialize(io, (BF_oracle_gp, LF_oracle_gp, HF_oracle_gp, BF_oracle_ra, LF_oracle_ra, HF_oracle_ra))
+        # end
+        np.savez_compressed(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID), "all_surr_oracle_predictions_final.npz"), BF_oracle_gp=BF_oracle_gp, LF_oracle_gp=LF_oracle_gp, HF_oracle_gp=HF_oracle_gp, BF_oracle_ra=BF_oracle_ra, LF_oracle_ra=LF_oracle_ra, HF_oracle_ra=HF_oracle_ra)
+
+
+        println("Finished replication $repID")
     end
 else
-    println("Surrogate predictions already generated. Sample Filepaths: ", joinpath(args_dict["data_dir"], @sprintf("rep_%03d", 1), @sprintf("all_surr_oracle_predictions_%s_final.npz", kle_cases[1])))
+    println("Surrogate predictions already generated. Sample Filepaths: ", joinpath(args_dict["data_dir"], @sprintf("rep_%03d", 1), "all_surr_oracle_predictions_final.npz"))
 end
-        
-
-
-
-
-
-
 
 
 
