@@ -67,8 +67,10 @@ args_dict = Dict("root_dir"=>"/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pd
             "NREPS"=> 5,
             "NFOLDS"=> 5,
             "BUDGET_HF"=>50,
-            "N_PILOT_LF"=>1000,
-            "N_PILOT_HF"=>50,
+            # "N_PILOT_LF"=>1000,
+            # "N_PILOT_HF"=>50,
+            "N_PILOT_LF"=>500,
+            "N_PILOT_HF"=>25,
             "acqFunc" => "EI",
             "lb" => [0.01, 0.05, 0.3, 0.55],
             "ub" => [0.05, 0.08, 0.7, 0.85]
@@ -252,6 +254,7 @@ else
 end
 
 for repID in 1:args_dict["NREPS"]
+# for repID in 1:1
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
     rd_seed = 20250531 + repID
@@ -266,6 +269,7 @@ for repID in 1:args_dict["NREPS"]
 
     batchID = 0
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
+    # for batchID in 0:1
         if batchID == 0
             isPilot = true
             fileLF = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_LF_Pilot_scaled.txt"
@@ -292,8 +296,8 @@ for repID in 1:args_dict["NREPS"]
         # @assert size(inputsLF, 1) - nPilotLF == size(inputsHF, 1) - nPilotHF
         nLF = Int(size(inputsLF, 1) / 2)
         nHF = Int(size(inputsHF, 1) / 2)
-        nPilotLF = 1000
-        nPilotHF = 50
+        nPilotLF = deepcopy(n_pilot_lf)
+        nPilotHF = deepcopy(n_pilot_hf)
         batch_num = Int(size(inputsLF, 1) / 2) - nPilotLF
 
         @assert batchID == batch_num
