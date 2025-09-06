@@ -310,67 +310,75 @@ for repID in 1:args_dict["NREPS"]
             inputsLF_orig = 0.5 * inputsLF .* (ub - lb)' .+ 0.5 * (ub + lb)'
             inputsHF_orig = 0.5 * inputsHF .* (ub - lb)' .+ 0.5 * (ub + lb)'
             # input data is split into two parts: first half is GP points, second half is points through random acquisition. (The first k points in each are identical). We run the surrogate building loop twice, once for each half.
-
             LF_data = [pilot_LF_data pilot_LF_data]
             HF_data = [pilot_HF_data pilot_HF_data]
-
-
         else
             inputsLF_orig = 2 * (inputsLF .- (1/2)*(lb + ub)') ./ (ub - lb)'
             inputsHF_orig = 2 * (inputsHF .- (1/2)*(lb + ub)') ./ (ub - lb)'
-
             # now generate LF and HF data for acquired points, concatenate with pilot data.
-            
-            new_gp = inputsLF[nLF, :]
-            new_ra = inputsLF[end, :]
+            new_gp = inputsLF[(n_pilot_lf + 1):nLF, :]
+            new_ra = inputsLF[(n_pilot_lf + nLF + 1):end, :]
 
-            phi_hf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesHF, 
-            u_vel_HF,
-            v_vel_HF,
-            theta_s = new_gp[1], 
-            theta_h = new_gp[2],
-            theta_x = new_gp[3],
-            theta_y = new_gp[4],
-            alpha = 1e-2,
-            )
-
-            phi_lf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
-            u_vel_LF,
-            v_vel_LF,
-            theta_s = new_gp[1],
-            theta_h = new_gp[2],
-            theta_x = new_gp[3],
-            theta_y = new_gp[4],
-            alpha = 1e-2,
-            )
-
-            phi_hf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesHF,
-            u_vel_HF,
-            v_vel_HF,
-            theta_s = new_ra[1],
-            theta_h = new_ra[2],
-            theta_x = new_ra[3],
-            theta_y = new_ra[4],
-            alpha = 1e-2,
-            )
-
-            phi_lf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
-            u_vel_LF,
-            v_vel_LF,
-            theta_s = new_ra[1],
-            theta_h = new_ra[2],
-            theta_x = new_ra[3],
-            theta_y = new_ra[4],
-            alpha = 1e-2,
-            )
-            
-            lf_gp_flat = phi_lf_gp[:]
-            _, hf_gp_flat = readAndInterpolateHFFromArray(phi_hf_gp, gridQuantitiesHF, gridQuantitiesLF)
-
-            lf_ra_flat = phi_lf_ra[:]
-            _, hf_ra_flat = readAndInterpolateHFFromArray(phi_hf_ra, gridQuantitiesHF, gridQuantitiesLF)
+            # phi_hf_gp = zeros(nxHF, nyHF, size(new_gp, 1))
+            # phi_lf_gp = zeros(nxLF, nyLF, size(new_gp, 1))
+            # phi_hf_ra = zeros(nxHF, nyHF, size(new_ra, 1))
+            # phi_lf_ra = zeros(nxLF, nyLF, size(new_ra, 1))
+            lf_gp_flat = zeros(nxLF * nyLF, size(new_gp, 1))
+            hf_gp_flat = zeros(nxLF * nyLF, size(new_gp, 1))
+            lf_ra_flat = zeros(nxLF * nyLF, size(new_ra, 1))
+            hf_ra_flat = zeros(nxLF * nyLF, size(new_ra, 1))
 
 
+            for i in 1:size(new_gp, 1)
+                phi_hf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesHF, 
+                u_vel_HF,
+                v_vel_HF,
+                theta_s = new_gp[i, 1], 
+                theta_h = new_gp[i, 2],
+                theta_x = new_gp[i, 3],
+                theta_y = new_gp[i, 4],
+                alpha = 1e-2,
+                )
+
+                phi_lf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
+                u_vel_LF,
+                v_vel_LF,
+                theta_s = new_gp[i, 1],
+                theta_h = new_gp[i, 2],
+                theta_x = new_gp[i, 3],
+                theta_y = new_gp[i, 4],
+                alpha = 1e-2,
+                )
+
+                lf_gp_flat[:, i] = phi_lf_gp[:]
+                _, hf_gp_flat[:, i] = readAndInterpolateHFFromArray(phi_hf_gp, gridQuantitiesHF, gridQuantitiesLF)
+
+            end
+
+            for i in 1:size(new_ra, 1)
+                phi_hf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesHF,
+                u_vel_HF,
+                v_vel_HF,
+                theta_s = new_ra[i, 1],
+                theta_h = new_ra[i, 2],
+                theta_x = new_ra[i, 3],
+                theta_y = new_ra[i, 4],
+                alpha = 1e-2,
+                )
+
+                phi_lf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
+                u_vel_LF,
+                v_vel_LF,
+                theta_s = new_ra[i, 1],
+                theta_h = new_ra[i, 2],
+                theta_x = new_ra[i, 3],
+                theta_y = new_ra[i, 4],
+                alpha = 1e-2,
+                )
+
+                lf_ra_flat[:, i] = phi_lf_ra[:]
+                _, hf_ra_flat[:, i] = readAndInterpolateHFFromArray(phi_hf_ra, gridQuantitiesHF, gridQuantitiesLF)
+            end
             LF_data = [pilot_LF_data lf_gp_flat pilot_LF_data lf_ra_flat]
 
             HF_data = [pilot_HF_data hf_gp_flat pilot_HF_data hf_ra_flat]
