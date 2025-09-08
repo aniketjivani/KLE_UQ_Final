@@ -66,10 +66,10 @@ args_dict = Dict("root_dir"=>"/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pd
             "dirHFData"=>"./2d_pde/dirHF",
             "NREPS"=> 5,
             "NFOLDS"=> 5,
-            # "BUDGET_HF"=>50,
             # "N_PILOT_LF"=>500,
             # "N_PILOT_HF"=>25,
-            "BUDGET_HF"=>50,
+            # "BUDGET_HF"=>50,
+            "BUDGET_HF"=>100,
             "N_PILOT_LF"=>200,
             "N_PILOT_HF"=>5,
             "acqFunc" => "EI",
@@ -206,7 +206,7 @@ def plotPhiForThetaGeneric(gridQuantities,
     x, y, xm, ym, XM, YM, dx, dy, dxi, dyi, dxi2, dyi2 = gridQuantities
 
     fidelity = ""
-    if x.shape[0] - 1 == 64:
+    if x.shape[0] - 1 == 128:
         fidelity += "HF"
     elif x.shape[0] - 1 == 32:
         fidelity += "LF"
@@ -239,9 +239,9 @@ n_pilot_lf = args_dict["N_PILOT_LF"]
 n_pilot_hf = args_dict["N_PILOT_HF"]
 
 oracle_dir = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/2d_oracle_HF_data"
-# _, HF_oracle = readHFFromDir(oracle_dir, gridQuantitiesHF, gridQuantitiesLF)
-# npzwrite("./2d_pde/HF_oracle_flattened_interp.npy", HF_oracle)
-HF_oracle_data = np.load("./2d_pde/HF_oracle_flattened_interp.npy", allow_pickle=true)
+_, HF_oracle = readHFFromDir(oracle_dir, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
+npzwrite("./2d_pde/HF_oracle_flattened_interp.npy", HF_oracle)
+# HF_oracle_data = np.load("./2d_pde/HF_oracle_flattened_interp.npy", allow_pickle=true)
 HF_oracle_design = np.loadtxt("./2d_pde/input_list_oracle_HF_scaled.txt")
 
 # first read and interpolate pilot data, also save it to array directly.
@@ -253,22 +253,22 @@ output_dir = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/2d_output_dir/
 pilot_dir_HF = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirHF/pilotHF_trunc"
 pilot_dir_LF = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirLF/pilotLF_trunc"
 
-if !(isfile(joinpath(args_dict["root_dir"],"LF_pilot_data.jls")))
-    _, pilot_HF_data = readHFFromDir(pilot_dir_HF, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
+# if !(isfile(joinpath(args_dict["root_dir"],"LF_pilot_data.jls")))
+_, pilot_HF_data = readHFFromDir(pilot_dir_HF, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
 
-    pilot_LF_data = readLFFromDir(pilot_dir_LF, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
+pilot_LF_data = readLFFromDir(pilot_dir_LF, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
 
-    open(joinpath(args_dict["root_dir"], "HF_pilot_data.jls"), "w") do io
-        serialize(io, pilot_HF_data)
-    end
-
-    open(joinpath(args_dict["root_dir"], "LF_pilot_data.jls"), "w") do io
-        serialize(io, pilot_LF_data)
-    end
-else
-    pilot_HF_data = deserialize(joinpath(args_dict["root_dir"], "HF_pilot_data.jls"))
-    pilot_LF_data = deserialize(joinpath(args_dict["root_dir"], "LF_pilot_data.jls"))
+open(joinpath(args_dict["root_dir"], "HF_pilot_data.jls"), "w") do io
+    serialize(io, pilot_HF_data)
 end
+
+open(joinpath(args_dict["root_dir"], "LF_pilot_data.jls"), "w") do io
+    serialize(io, pilot_LF_data)
+end
+# else
+#     pilot_HF_data = deserialize(joinpath(args_dict["root_dir"], "HF_pilot_data.jls"))
+#     pilot_LF_data = deserialize(joinpath(args_dict["root_dir"], "LF_pilot_data.jls"))
+# end
 
 # for repID in 1:args_dict["NREPS"]
 for repID in 1:1
@@ -287,6 +287,7 @@ for repID in 1:1
 
     batchID = 0
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
+    # for batchID in 75:(args_dict["BUDGET_HF"] - 1)
     # for batchID in 0:1
         if batchID == 0
             isPilot = true
