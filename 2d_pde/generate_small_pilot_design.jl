@@ -10,8 +10,11 @@ using LatinHypercubeSampling
 lower_bounds = [0.01, 0.05, 0.3, 0.55]
 upper_bounds = [0.05, 0.08, 0.7, 0.85]
 
-NLF = 500
-NHF = 25
+# NLF = 500
+# NHF = 25
+
+NLF = 200
+NHF = 5
 
 input_list = zeros(NLF, 4)
 
@@ -33,18 +36,19 @@ HFPlanFinal = LFPlan[HFIdx, :]
 input_listHF = input_list[HFIdx, :]
 input_listHF_scaled = input_list_scaled[HFIdx, :]
 
-open("./2d_pde/input_list_LF_Pilot_scaled.txt", "w") do io
-    writedlm(io, input_list_scaled)
+# repeat and save
+open("./2d_pde/input_list_LF_Pilot_scaled_trunc.txt", "w") do io
+    writedlm(io, [input_list_scaled; input_list_scaled])
 end
-open("./2d_pde/input_list_LF_Pilot.txt", "w") do io
-    writedlm(io, input_list)
+# open("./2d_pde/input_list_LF_Pilot.txt", "w") do io
+#     writedlm(io, input_list)
+# end
+open("./2d_pde/input_list_HF_Pilot_scaled_trunc.txt", "w") do io
+    writedlm(io, [input_listHF_scaled; input_listHF_scaled])
 end
-open("./2d_pde/input_list_HF_Pilot_scaled.txt", "w") do io
-    writedlm(io, input_listHF_scaled)
-end
-open("./2d_pde/input_list_HF_Pilot.txt", "w") do io
-    writedlm(io, input_listHF)
-end
-open("./2d_pde/input_list_LFIdx.txt", "w") do io
-    writedlm(io, HFIdx)
+# open("./2d_pde/input_list_HF_Pilot.txt", "w") do io
+#     writedlm(io, input_listHF)
+# end
+open("./2d_pde/input_list_LFIdx_trunc.txt", "w") do io
+    writedlm(io, [HFIdx; HFIdx])
 end
