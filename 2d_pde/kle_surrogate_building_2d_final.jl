@@ -283,8 +283,7 @@ for repID in 1:1
     mkpath(joinpath(args_dict["input_dir"], @sprintf("rep_%03d", repID)))
     mkpath(joinpath(args_dict["data_dir"], @sprintf("rep_%03d", repID)))
     mkpath(joinpath(args_dict["plot_dir"], @sprintf("rep_%03d", repID)))
-    mkpath(joinpath(output_dir_HF, @sprintf("rep_%03d", repID)))
-    mkpath(joinpath(output_dir_LF, @sprintf("rep_%03d", repID)))
+    mkpath(joinpath(output_dir, @sprintf("rep_%03d", repID)))
 
     batchID = 0
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
@@ -335,8 +334,9 @@ for repID in 1:1
             inputsHF_orig = 0.5 * inputsHF .* (ub - lb)' .+ 0.5 * (ub + lb)'
             # input data is split into two parts: first half is GP points, second half is points through random acquisition. (The first k points in each are identical). We run the surrogate building loop twice, once for each half.
 
-            with open(joinpath(output_dir, @sprintf("rep_%03d", repID), @sprintf("output_data_batch_%03d", batchID) * ".jls"), "w") do io
+            open(joinpath(output_dir, @sprintf("rep_%03d", repID), @sprintf("output_data_batch_%03d", batchID) * ".jls"), "w") do io
                 serialize(io, Dict("lf_gp_flat"=>pilot_LF_data, "hf_gp_flat"=>pilot_HF_data, "lf_ra_flat"=>pilot_LF_data, "hf_ra_flat"=>pilot_HF_data))
+            end
 
             LF_data = [pilot_LF_data pilot_LF_data]
             HF_data = [pilot_HF_data pilot_HF_data]
@@ -395,10 +395,10 @@ for repID in 1:1
             lf_ra_flat = phi_lf_ra[:]
 
             _, hf_gp_flat = readAndInterpolateHFFromArray(phi_hf_gp, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
-            _, hf_ra_flat = readAndInterpolateHFFromArray(phi_hf_ra, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = ny HF, nxLF = nxLF, nyLF = nyLF)
+            _, hf_ra_flat = readAndInterpolateHFFromArray(phi_hf_ra, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
 
             # save to file.
-            with open(joinpath(output_dir, @sprintf("rep_%03d", repID), @sprintf("output_data_batch_%03d", batchID) * ".jls"), "w") do io
+            open(joinpath(output_dir, @sprintf("rep_%03d", repID), @sprintf("output_data_batch_%03d", batchID) * ".jls"), "w") do io
                 serialize(io, Dict("lf_gp_flat"=>lf_gp_flat, "hf_gp_flat"=>hf_gp_flat, "lf_ra_flat"=>lf_ra_flat, "hf_ra_flat"=>hf_ra_flat))
             end
 
@@ -408,11 +408,11 @@ for repID in 1:1
             LF_data = zeros(nxLF * nyLF, 2 * nLF)
             HF_data = zeros(nxLF * nyLF, 2 * nHF)
 
-            LF_data[:, 1:n_pilot_lf] = pilot_LF_data
-            HF_data[:, 1:n_pilot_hf] = pilot_HF_data
+            LF_data[:, 1:nPilotLF] = pilot_LF_data
+            HF_data[:, 1:nPilotHF] = pilot_HF_data
 
-            LF_data[:, (nLF + 1):(nLF + n_pilot_lf)] = pilot_LF_data
-            HF_data[:, (nHF + 1):(nHF + n_pilot_hf)] = pilot_HF_data
+            LF_data[:, (nLF + 1):(nLF + nPilotLF)] = pilot_LF_data
+            HF_data[:, (nHF + 1):(nHF + nPilotHF)] = pilot_HF_data
 
 
             if batchID > 1
@@ -424,91 +424,23 @@ for repID in 1:1
                     lf_ra = prev_data["lf_ra_flat"]
                     hf_ra = prev_data["hf_ra_flat"]
 
-                    LF_data[:, (n_pilot_lf + 1 + bID)] = lf_gp
-                    LF_data[:, (nLF + n_pilot_lf + 1 + bID)] = lf_ra
+                    LF_data[:, (nPilotLF + bID)] = lf_gp
+                    LF_data[:, (nLF + nPilotLF + bID)] = lf_ra
 
-                    HF_data[:, (n_pilot_hf + 1 + bID)] = hf_gp
-                    HF_data[:, (nHF + n_pilot_hf + 1 + bID)] = hf_ra
+                    HF_data[:, (nPilotHF + bID)] = hf_gp
+                    HF_data[:, (nHF + nPilotHF + bID)] = hf_ra
                 end
+                LF_data[:, nLF] = lf_gp_flat
+                LF_data[:, end] = lf_ra_flat
+                HF_data[:, nHF] = hf_gp_flat
+                HF_data[:, end] = hf_ra_flat
             else
-                LF_data[:, (n_pilot_lf + 1):nLF] = lf_gp_flat
-                LF_data[:, (nLF + n_pilot_lf + 1):end] = lf_ra_flat
+                LF_data[:, (nPilotLF + 1):nLF] = lf_gp_flat
+                LF_data[:, (nLF + nPilotLF + 1):end] = lf_ra_flat
 
-                HF_data[:, (n_pilot_hf + 1):nHF] = hf_gp_flat
-                HF_data[:, (nHF + n_pilot_hf + 1):end] = hf_ra_flat
+                HF_data[:, (nPilotHF + 1):nHF] = hf_gp_flat
+                HF_data[:, (nHF + nPilotHF + 1):end] = hf_ra_flat
             end
-                
-                
-            LF_data[:, nLF] = lf_gp_flat
-            LF_data[:, end] = lf_ra_flat
-            HF_data[:, nHF] = hf_gp_flat
-            HF_data[:, end] = hf_ra_flat
-
-
-
-
-            # new_gp = inputsLF[(n_pilot_lf + 1):nLF, :]
-            # new_ra = inputsLF[(n_pilot_lf + nLF + 1):end, :]
-
-            # lf_gp_flat = zeros(nxLF * nyLF, size(new_gp, 1))
-            # hf_gp_flat = zeros(nxLF * nyLF, size(new_gp, 1))
-            # lf_ra_flat = zeros(nxLF * nyLF, size(new_ra, 1))
-            # hf_ra_flat = zeros(nxLF * nyLF, size(new_ra, 1))
-
-
-            # for i in 1:size(new_gp, 1)
-            #     phi_hf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesHF, 
-            #     u_vel_HF,
-            #     v_vel_HF,
-            #     theta_s = new_gp[i, 1], 
-            #     theta_h = new_gp[i, 2],
-            #     theta_x = new_gp[i, 3],
-            #     theta_y = new_gp[i, 4],
-            #     alpha = 1e-2,
-            #     )
-
-            #     phi_lf_gp = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
-            #     u_vel_LF,
-            #     v_vel_LF,
-            #     theta_s = new_gp[i, 1],
-            #     theta_h = new_gp[i, 2],
-            #     theta_x = new_gp[i, 3],
-            #     theta_y = new_gp[i, 4],
-            #     alpha = 1e-2,
-            #     )
-
-            #     lf_gp_flat[:, i] = phi_lf_gp[:]
-            #     _, hf_gp_flat[:, i] = readAndInterpolateHFFromArray(phi_hf_gp, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
-
-            # end
-
-            # for i in 1:size(new_ra, 1)
-            #     phi_hf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesHF,
-            #     u_vel_HF,
-            #     v_vel_HF,
-            #     theta_s = new_ra[i, 1],
-            #     theta_h = new_ra[i, 2],
-            #     theta_x = new_ra[i, 3],
-            #     theta_y = new_ra[i, 4],
-            #     alpha = 1e-2,
-            #     )
-
-            #     phi_lf_ra = py"plotPhiForThetaGeneric"(gridQuantitiesLF,
-            #     u_vel_LF,
-            #     v_vel_LF,
-            #     theta_s = new_ra[i, 1],
-            #     theta_h = new_ra[i, 2],
-            #     theta_x = new_ra[i, 3],
-            #     theta_y = new_ra[i, 4],
-            #     alpha = 1e-2,
-            #     )
-
-            #     lf_ra_flat[:, i] = phi_lf_ra[:]
-            #     _, hf_ra_flat[:, i] = readAndInterpolateHFFromArray(phi_hf_ra, gridQuantitiesHF, gridQuantitiesLF; nxHF = nxHF, nyHF = nyHF, nxLF = nxLF, nyLF = nyLF)
-            # end
-            # LF_data = [pilot_LF_data lf_gp_flat pilot_LF_data lf_ra_flat]
-
-            # HF_data = [pilot_HF_data hf_gp_flat pilot_HF_data hf_ra_flat]
         end
 
         Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, inputsHFSubsetIdx[(nHF + 1):end]]]
