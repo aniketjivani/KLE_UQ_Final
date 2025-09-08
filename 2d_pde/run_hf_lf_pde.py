@@ -125,7 +125,7 @@ def plotPhiForThetaGeneric(gridQuantities, sid, u_vel, v_vel,
     x, y, xm, ym, XM, YM, dx, dy, dxi, dyi, dxi2, dyi2 = gridQuantities
 
     fidelity = ""
-    if x.shape[0] - 1 == 64:
+    if x.shape[0] - 1 == 128:
         fidelity += "HF"
     elif x.shape[0] - 1 == 32:
         fidelity += "LF"
@@ -196,64 +196,64 @@ def plotPhiForThetaGeneric(gridQuantities, sid, u_vel, v_vel,
     # print ylims
     # print("Phi min: ", np.min(phi_data), " Phi max: ", np.max(phi_data))
 # %% Example Usage
-nx = 32
-ny = 32
-gridQuantities = getGridQuantities(nx, ny)
-runPilot = False
-u_vel, v_vel = getVelocitiesGeneric(gridQuantities)
-if runPilot:
-    if nx == 32:
-        pilot_scaled = np.loadtxt("/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_LF_Pilot_scaled.txt")[:1000, :]
-        dir_save = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirLF/pilotLF"
-    elif nx == 64:
-        pilot_scaled = np.loadtxt("/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_HF_Pilot_scaled.txt")[:50, :]
-        dir_save = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirHF/pilotHF"
+# nx = 32
+# ny = 32
+# nLF = 200
+# nHF = 5
+# gridQuantities = getGridQuantities(nx, ny)
+# runPilot = True
+# u_vel, v_vel = getVelocitiesGeneric(gridQuantities)
+# if runPilot:
+#     if nx == 32:
+#         pilot_scaled = np.loadtxt("/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_LF_Pilot_scaled_trunc.txt")[:nLF, :]
+#         dir_save = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirLF/pilotLF_trunc"
+#     elif nx == 128:
+#         pilot_scaled = np.loadtxt("/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_HF_Pilot_scaled_trunc.txt")[:nHF, :]
+#         dir_save = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/dirHF/pilotHF_trunc"
         
-    lb = np.array([0.01, 0.05, 0.3, 0.55])
-    ub = np.array([0.05, 0.08, 0.7, 0.85])
+#     lb = np.array([0.01, 0.05, 0.3, 0.55])
+#     ub = np.array([0.05, 0.08, 0.7, 0.85])
 
-    inputs_orig = lb + (pilot_scaled + 1) * 0.5 * (ub - lb)
-    u_vel, v_vel = getVelocitiesGeneric(gridQuantities)
+#     inputs_orig = lb + (pilot_scaled + 1) * 0.5 * (ub - lb)
+#     u_vel, v_vel = getVelocitiesGeneric(gridQuantities)
 
-    n_pilot = inputs_orig.shape[0]
+#     n_pilot = inputs_orig.shape[0]
 
+#     for sid in range(1, n_pilot + 1):
+#         plotPhiForThetaGeneric(gridQuantities, 
+#                             sid,
+#                             u_vel, v_vel,
+#                             theta_s=inputs_orig[sid - 1, 0],
+#                             theta_h=inputs_orig[sid - 1, 1],
+#                             theta_x=inputs_orig[sid - 1, 2],
+#                             theta_y=inputs_orig[sid - 1, 3],
+#                             savefig=False,
+#                             savedata=True,
+#                             savedatadir=dir_save,
+#                             colors_to_use=ListedColormap(parula_colors)
+#                             )
 
+# ts_vals = [0.05, 0.05, 0.01, 0.02]
+# th_vals = [0.07, 0.08, 0.05, 0.07]
+# tx_vals = [0.41, 0.48, 0.69, 0.69]
+# ty_vals = [0.56, 0.77, 0.67, 0.83]
 
-    for sid in range(1, n_pilot + 1):
-        plotPhiForThetaGeneric(gridQuantities, 
-                            sid,
-                            u_vel, v_vel,
-                            theta_s=inputs_orig[sid - 1, 0],
-                            theta_h=inputs_orig[sid - 1, 1],
-                            theta_x=inputs_orig[sid - 1, 2],
-                            theta_y=inputs_orig[sid - 1, 3],
-                            savefig=False,
-                            savedata=True,
-                            savedatadir=dir_save,
-                            colors_to_use=ListedColormap(parula_colors)
-                            )
+# minv_sample = [-0.2081, -0.2929, -0.054, -0.1312]
+# maxv_sample = [0.3219, 0.1355, 0.1006, 0.0807]
 
-ts_vals = [0.05, 0.05, 0.01, 0.02]
-th_vals = [0.07, 0.08, 0.05, 0.07]
-tx_vals = [0.41, 0.48, 0.69, 0.69]
-ty_vals = [0.56, 0.77, 0.67, 0.83]
-
-minv_sample = [-0.2081, -0.2929, -0.054, -0.1312]
-maxv_sample = [0.3219, 0.1355, 0.1006, 0.0807]
-
-for sid, (ts, th, tx, ty) in enumerate(zip(ts_vals, th_vals, tx_vals, ty_vals)):
-    plotPhiForThetaGeneric(gridQuantities, 
-                           sid,
-                           u_vel, v_vel,
-                           theta_s=ts,
-                           theta_h=th,
-                           theta_x=tx,
-                           theta_y=ty,
-                           savefig=True,
-                           savefigdir="/Users/ajivani/Desktop/Research/KLE_UQ_Final/Plots/2d_pde_plots",
-                           colors_to_use=ListedColormap(parula_colors),
-                            minv=minv_sample[sid],
-                            maxv=maxv_sample[sid]
-                           )
+# for sid, (ts, th, tx, ty) in enumerate(zip(ts_vals, th_vals, tx_vals, ty_vals)):
+#     plotPhiForThetaGeneric(gridQuantities, 
+#                            sid,
+#                            u_vel, v_vel,
+#                            theta_s=ts,
+#                            theta_h=th,
+#                            theta_x=tx,
+#                            theta_y=ty,
+#                            savefig=True,
+#                            savefigdir="/Users/ajivani/Desktop/Research/KLE_UQ_Final/Plots/2d_pde_plots",
+#                            colors_to_use=ListedColormap(parula_colors),
+#                             minv=minv_sample[sid],
+#                             maxv=maxv_sample[sid]
+#                            )
 # %%
 
