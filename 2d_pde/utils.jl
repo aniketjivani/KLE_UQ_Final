@@ -91,6 +91,48 @@ mutable struct KLEObjectAll
     KLEObjectAll(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF) = new(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF)
 end
 
+mutable struct KLEObjectStd
+    YmLF
+    YstdLF
+    QLF
+    λLF
+    bβLF
+    regLF
+    YmDelta
+    YstdDelta
+    QDelta
+    λDelta
+    bβDelta
+    regDelta
+
+    KLEObjectStd(YmLF, YstdLF, QLF, λLF, bβLF, regLF, YmDelta, YstdDelta, QDelta, λDelta, bβDelta, regDelta) = new(YmLF, YstdLF, QLF, λLF, bβLF, regLF, YmDelta, YstdDelta, QDelta, λDelta, bβDelta, regDelta)
+end
+
+mutable struct KLEObjectAllStd
+    YmLF
+    YstdLF
+    QLF
+    λLF
+    bβLF
+    regLF
+    YmDelta
+    YstdDelta
+    QDelta
+    λDelta
+    bβDelta
+    regDelta
+    YmHF
+    YstdHF
+    QHF
+    λHF
+    bβHF
+    regHF
+
+    # KLEObjectAll(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF) = new(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF)
+    KLEObjectAllStd(YmLF, YstdLF, QLF, λLF, bβLF, regLF, YmDelta, YstdDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, YstdHF, QHF, λHF, bβHF, regHF) = new(YmLF, YstdLF, QLF, λLF, bβLF, regLF, YmDelta, YstdDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, YstdHF, QHF, λHF, bβHF, regHF)
+end
+
+
 """
 Return the train set indices and the holdout set indices for each of the k folds that we randomly partition our original pool into.
 """
@@ -222,6 +264,8 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
 	QDelta_oracle, λDelta_oracle, bβDelta_oracle, regDelta_oracle, YMeanDelta_oracle = buildKLE(xi_HF, yDelta_data, grid; kle_kwargs_Δ...)
     QHF_oracle, λHF_oracle, bβHF_oracle, regHF_oracle, YMeanHF_oracle = buildKLE(xi_HF, yHF_data, grid; kle_kwargs_HF...)
 
+
+
 	# predict on grid
 	BF_oracle = zeros(ng, size(HF_oracle_design, 1))
     HF_KLE_oracle = zeros(ng, size(HF_oracle_design, 1))
@@ -254,6 +298,124 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
     kleObject = KLEObject(YmLF_all, QLF_all, λLF_all, bβLF_all, regLF_all, YmDelta_all, QDelta_all, λDelta_all, bβDelta_all, regDelta_all)
 
     kle_oracle = KLEObjectAll(YMeanLF_oracle, QLF_oracle, λLF_oracle, bβLF_oracle, regLF_oracle, YMeanDelta_oracle, QDelta_oracle, λDelta_oracle, bβDelta_oracle, regDelta_oracle, YMeanHF_oracle, QHF_oracle, λHF_oracle, bβHF_oracle, regHF_oracle)
+
+    return LOOErrors, oracle_errors, oracle_errors_HF, kleObject, kle_oracle
+end
+
+"""
+for 2D evaluateKLE, supply HF oracle data generated via space-filling design. Also build HF KLE oracle and save oracle objects. Optionally, divide by std dev before building KLEs.
+"""
+function evaluateKLEStandardized(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, grid; 
+    all_folds=nothing, 
+    useAbsErr=0,
+    HF_oracle_data=nothing,
+    HF_oracle_design=nothing)
+	yPredicted = zeros(size(yLF_data, 1), size(xi_HF, 1))
+    YmLF_all = []
+    YstdLF_all = []
+    QLF_all = []
+	λLF_all = []
+	bβLF_all = []
+	regLF_all = []
+    YmDelta_all = []
+    YstdDelta_all = []
+	QDelta_all = []
+	λDelta_all = []
+	bβDelta_all = []
+	regDelta_all = []
+	# @assert length(HF_LF_ID) == size(xi_HF, 1)
+	ng = length(grid)^2
+		
+	# Loop for general as well as LOO cross-validation model building
+	# all_folds = k_folds(HF_LF_ID, nFolds)
+
+	for (idx, (train_indices, holdout_indices)) in enumerate(all_folds)
+		# println(holdout_indices)
+		holdout_HF_ID = HF_LF_ID[holdout_indices]
+		
+		QLF, λLF, bβLF, regLF, YMeanLF, YStdLF = buildKLEStandardized(xi_LF[setdiff(1:end, holdout_HF_ID), :], yLF_data[:, setdiff(1:end, holdout_HF_ID)], grid; kle_kwargs...)
+		QDelta, λDelta, bβDelta, regDelta, YMeanDelta, YStdDelta = buildKLEStandardized(xi_HF[setdiff(1:end, holdout_indices), :], yDelta_data[:, setdiff(1:end, holdout_indices)], grid; kle_kwargs_Δ...)
+
+		if length(holdout_indices) == 1
+			ΨTest_LF = PrepCaseA(xi_LF[holdout_HF_ID[1], :]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+			ΨTest_Δ = PrepCaseA(xi_HF[holdout_indices[1], :]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+		else
+			ΨTest_LF = PrepCaseA(xi_LF[holdout_HF_ID, :]; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+			ΨTest_Δ = PrepCaseA(xi_HF[holdout_indices, :]; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+		end
+		# println(size(ΨTest_LF))
+		# println(size(ΨTest_Δ))
+
+		klModes_LF = QLF .* sqrt.(λLF)'
+		klModes_Δ  = QDelta .* sqrt.(λDelta)'
+
+		if length(holdout_indices) == 1
+            yPredicted[:, holdout_indices[1]] = (klModes_LF * bβLF * ΨTest_LF) .* YStdLF .+ YMeanLF + (klModes_Δ * bβDelta * ΨTest_Δ) .* YStdDelta .+ YMeanDelta
+		else
+			yPredicted[:, holdout_indices] = (klModes_LF * bβLF * ΨTest_LF) .* YStdLF .+ YMeanLF + (klModes_Δ * bβDelta * ΨTest_Δ) .* YStdDelta .+ YMeanDelta
+		end
+
+		push!(YmLF_all, YMeanLF)
+        push!(YstdLF_all, YStdLF)
+        push!(QLF_all, QLF)
+		push!(λLF_all, λLF)
+		push!(bβLF_all, bβLF)
+		push!(regLF_all, regLF)
+
+        push!(YmDelta_all, YMeanDelta)
+        push!(YstdDelta_all, YStdDelta)
+		push!(QDelta_all, QDelta)
+		push!(λDelta_all, λDelta)
+		push!(bβDelta_all, bβDelta)
+		push!(regDelta_all, regDelta)
+	end
+	
+
+    LOOErrors = []
+    
+    if useAbsErr==1
+        LOOErrors = [ϵAbs1(yHF_data[:, i], yPredicted[:, i]) for i in 1:size(xi_HF, 1)]
+	else
+        LOOErrors = [ϵ1(yHF_data[:, i], yPredicted[:, i]) for i in 1:size(xi_HF, 1)]
+    end
+
+	# Also generate predictions from the full model at multiple test points
+	QLF_oracle, λLF_oracle, bβLF_oracle, regLF_oracle, YMeanLF_oracle, YStdLF_oracle = buildKLEStandardized(xi_LF, yLF_data, grid; kle_kwargs...)
+	QDelta_oracle, λDelta_oracle, bβDelta_oracle, regDelta_oracle, YMeanDelta_oracle, YStdDelta_oracle = buildKLEStandardized(xi_HF, yDelta_data, grid; kle_kwargs_Δ...)
+    QHF_oracle, λHF_oracle, bβHF_oracle, regHF_oracle, YMeanHF_oracle, YStdHF_oracle = buildKLEStandardized(xi_HF, yHF_data, grid; kle_kwargs_HF...)
+
+
+	# predict on grid
+	BF_oracle = zeros(ng, size(HF_oracle_design, 1))
+    HF_KLE_oracle = zeros(ng, size(HF_oracle_design, 1))
+	oracle_errors = zeros(size(HF_oracle_design, 1))
+    oracle_errors_HF = zeros(size(HF_oracle_design, 1))
+	
+    nOracle = size(HF_oracle_design, 1)
+    for i in 1:nOracle
+        ΨTest_LF_oracle = PrepCaseA([HF_oracle_design[i, 1], HF_oracle_design[i, 2], HF_oracle_design[i, 3], HF_oracle_design[i, 4]]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+        ΨTest_Δ_oracle = PrepCaseA([HF_oracle_design[i, 1], HF_oracle_design[i, 2], HF_oracle_design[i, 3], HF_oracle_design[i, 4]]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+        ΨTest_HF_oracle = PrepCaseA([HF_oracle_design[i, 1], HF_oracle_design[i, 2], HF_oracle_design[i, 3], HF_oracle_design[i, 4]]'; order=kle_kwargs_HF.order, dims=kle_kwargs_HF.dims)'
+
+        klModes_LF_oracle = QLF_oracle .* sqrt.(λLF_oracle)'
+        klModes_Δ_oracle = QDelta_oracle .* sqrt.(λDelta_oracle)'
+        klModes_HF_oracle = QHF_oracle .* sqrt.(λHF_oracle)'
+
+        BF_oracle[:, i] = (klModes_LF_oracle * bβLF_oracle * ΨTest_LF_oracle).* YStdLF_oracle + YMeanLF_oracle + (klModes_Δ_oracle * bβDelta_oracle * ΨTest_Δ_oracle).* YStdDelta_oracle + YMeanDelta_oracle
+
+        HF_KLE_oracle[:, i] = (klModes_HF_oracle * bβHF_oracle * ΨTest_HF_oracle).*YStdHF_oracle + YMeanHF_oracle
+
+        if useAbsErr == 1
+            oracle_errors[i] = ϵAbs1(HF_oracle_data[:, i], BF_oracle[:, i])
+            oracle_errors_HF[i] = ϵAbs1(HF_oracle_data[:, i], HF_KLE_oracle[:, i])
+        else
+            oracle_errors[i] = ϵ1(HF_oracle_data[:, i], BF_oracle[:, i])
+            oracle_errors_HF[i] = ϵ1(HF_oracle_data[:, i], HF_KLE_oracle[:, i])
+        end
+    end
+	
+    kleObject = KLEObjectStd(YmLF_all, YstdLF_all, QLF_all, λLF_all, bβLF_all, regLF_all, YmDelta_all, YstdDelta_all, QDelta_all, λDelta_all, bβDelta_all, regDelta_all)
+    kle_oracle = KLEObjectAllStd(YMeanLF_oracle, YStdLF_oracle, QLF_oracle, λLF_oracle, bβLF_oracle, regLF_oracle, YMeanDelta_oracle, YStdDelta_oracle, QDelta_oracle, λDelta_oracle, bβDelta_oracle, regDelta_oracle, YMeanHF_oracle, YStdHF_oracle, QHF_oracle, λHF_oracle, bβHF_oracle, regHF_oracle)
 
     return LOOErrors, oracle_errors, oracle_errors_HF, kleObject, kle_oracle
 end

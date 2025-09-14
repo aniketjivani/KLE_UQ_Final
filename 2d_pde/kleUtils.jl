@@ -17,6 +17,20 @@ function getCenteredSolution(Y)
     return YCentered, YMean
 end
 
+function getStandardizedSolution(Y)
+    if size(Y, 2) == 0
+	YMean = zeros(size(Y, 1))
+	YCentered = zeros(size(Y, 1))
+    else
+	YTransformed = Y
+	YMean = mean(YTransformed, dims = 2)[:]
+    YStd = std(YTransformed, dims = 2)[:]
+	# YCentered = YTransformed .- YMean
+    YCentered = (YTransformed .- YMean) ./ YStd
+    end
+    return YCentered, YMean, YStd
+end
+
 function getWeights(grid)
     nGridPts = length(grid)
     wts = zeros(nGridPts)
@@ -248,6 +262,27 @@ function buildKLE(ξ, Y, grid; order=3, dims=2, family="Legendre", useFullGrid=1
 
     return Q, λ, bβ, lambdaCV, YMean
 end
+
+"""
+Function that takes in germ ξ and solution Y and returns KLE decomposition of the same,
+i.e. Q(x), λ(x) and ζ(ξ)
+"""
+function buildKLEStandardized(ξ, Y, grid; order=3, dims=2, family="Legendre", useFullGrid=1, getAllModes=0, weightFunction=getWeights, solver="Tikhonov-L2")
+    YCentered, YMean, YStd = getStandardizedSolution(Y)
+    wts, wtRoot, wtInvRoot = weightFunction(grid)
+    Q, λ, kt = getSortedEigenpairsFromSVD(
+                                  YCentered, grid; 
+                                  useFullGrid=useFullGrid,
+                                  getAllModes=getAllModes,
+                                  weightFunction=weightFunction
+                                  )
+    ζ = getUncorrelatedRV(wts, YCentered, Q, λ)
+
+    bβ, lambdaCV = getPCCoefficients(ξ, ζ; order=order, dims=dims, family=family, solver=solver, lambdas = 10 .^(-2:0.2:3), nFolds=5)
+
+    return Q, λ, bβ, lambdaCV, YMean, YStd
+end
+
 
 """
 Function to use learned KLE coeffs and predict field for new samples of ξ
