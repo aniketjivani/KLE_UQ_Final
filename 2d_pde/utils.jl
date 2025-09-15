@@ -571,7 +571,7 @@ function readLF(LF_data_dir, nPilot, batch_num, rep_num; nxLF=32, nyLF=32)
             filename_i = joinpath(LF_data_dir, "LF_2D_Run" * @sprintf("%04d", i) * ".txt")
         else
             filename_i = joinpath(LF_data_dir, 
-                                @sprintf("rep_%03d", rep_num),
+            @sprintf("rep_%03d", rep_num),
             "LF_2D_Run" * @sprintf("%04d", i) * ".txt")
         end
         # filename_i = joinpath(LF_data_dir, "LF_2D_Run" * @sprintf("%04d", i) * ".txt")
@@ -595,4 +595,16 @@ function to_dict(obj::KLEObject)
         "bβDelta" => obj.bβDelta,
         "regDelta" => obj.regDelta
     )
+end
+
+function extend_vector(base, extras)
+    # First half = base plus extras
+    first_half = vcat(base, extras)
+    lbase_extended = extras[1] - 1
+    total_shift = 2 * lbase_extended + length(extras)
+    shift_idx = [total_shift + i for i in 1:length(extras)]
+
+    second_half = vcat(base, shift_idx)
+
+    return second_half
 end

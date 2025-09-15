@@ -69,6 +69,16 @@ end
 ϵAbs2(y1::Vector, y2::Vector) = norm((y1 - y2))
 ϵAbs1(y1::Vector, y2::Vector) = norm((y1 - y2), 1)
 
+mutable struct KLEObjectSingle
+    Ym
+    Q
+    λ
+    bβ
+    reg
+
+    KLEObjectSingle(Ym, Q, λ, bβ, reg) = new(Ym, Q, λ, bβ, reg)
+end
+
 mutable struct KLEObject
     YmLF
     QLF
@@ -82,6 +92,26 @@ mutable struct KLEObject
     regDelta
 
     KLEObject(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta) = new(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta)
+end
+
+mutable struct KLEObjectAll
+    YmLF
+    QLF
+    λLF
+    bβLF
+    regLF
+    YmDelta
+    QDelta
+    λDelta
+    bβDelta
+    regDelta
+    YmHF
+    QHF
+    λHF
+    bβHF
+    regHF
+
+    KLEObjectAll(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF) = new(YmLF, QLF, λLF, bβLF, regLF, YmDelta, QDelta, λDelta, bβDelta, regDelta, YmHF, QHF, λHF, bβHF, regHF)
 end
 
 """
@@ -238,3 +268,44 @@ function evaluateKLE(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, gr
 end
 
 
+function predictOnGrid(QLF, λLF, bβLF, regLF, YMeanLF, QDelta, λDelta, bβDelta, regDelta, YMeanDelta, theta_pred, x_data)
+    # QLF = kleParams["QLF"]
+    # λLF = kleParams["λLF"]
+    # bβLF = kleParams["bβLF"]
+    # regLF = kleParams["regLF"]
+    # YMeanLF = kleParams["YMeanLF"]
+
+    # QDelta = kleParams["QDelta"]
+    # λDelta = kleParams["λDelta"]
+    # bβDelta = kleParams["bβDelta"]
+    # regDelta = kleParams["regDelta"]
+    # YMeanDelta = kleParams["YMeanDelta"]
+
+    ng = length(x_data)
+
+	BFPredictions = zeros(ng, size(theta_pred, 1))
+
+    for i in 1:size(theta_pred, 1)
+		ΨTest_LF = PrepCaseA([theta_pred[i, 1], theta_pred[i, 2]]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+		ΨTest_Δ = PrepCaseA([theta_pred[i, 1], theta_pred[i, 2]]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+
+		klModes_LF = QLF .* sqrt.(λLF)'
+		klModes_Δ  = QDelta .* sqrt.(λDelta)'
+
+		BFPredictions[:, i] = (klModes_LF * bβLF * ΨTest_LF) + YMeanLF + (klModes_Δ * bβDelta * ΨTest_Δ) + YMeanDelta
+    end
+
+    return BFPredictions
+end
+
+function extend_vector(base, extras)
+    # First half = base plus extras
+    first_half = vcat(base, extras)
+    lbase_extended = extras[1] - 1
+    total_shift = 2 * lbase_extended + length(extras)
+    shift_idx = [total_shift + i for i in 1:length(extras)]
+
+    second_half = vcat(base, shift_idx)
+
+    return second_half
+end
