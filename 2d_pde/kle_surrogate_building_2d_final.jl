@@ -65,10 +65,10 @@ args_dict = Dict("root_dir"=>"/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pd
             "dirLFData"=>"./2d_pde/dirLF",
             "dirHFData"=>"./2d_pde/dirHF",
             "NREPS"=> 5,
-            "NFOLDS"=> 5,
+            "NFOLDS"=> 10,
             # "N_PILOT_LF"=>500,
             # "N_PILOT_HF"=>25,
-            "BUDGET_HF"=>50,
+            "BUDGET_HF"=>40,
             # "BUDGET_HF"=>75,
             "N_PILOT_LF"=>300,
             "N_PILOT_HF"=>10,
@@ -271,7 +271,7 @@ end
 # end
 
 # for repID in 1:args_dict["NREPS"]
-for repID in 1:1
+for repID in 3:4
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
     rd_seed = 20250531 + repID
@@ -286,9 +286,9 @@ for repID in 1:1
     mkpath(joinpath(output_dir, @sprintf("rep_%03d", repID)))
 
     batchID = 0
-    # for batchID in 0:(args_dict["BUDGET_HF"] - 1)
+    for batchID in 0:(args_dict["BUDGET_HF"] - 1)
     # for batchID in 15:(args_dict["BUDGET_HF"] - 1)
-    for batchID in 0:15
+    # for batchID in 0:15
         if batchID == 0
             isPilot = true
             # fileLF = "/Users/ajivani/Desktop/Research/KLE_UQ_Final/2d_pde/input_list_LF_Pilot_scaled.txt"
@@ -456,7 +456,10 @@ for repID in 1:1
         end
         # Generate k-fold indices (for half the dataset, repeat)
 
-        k_folds_batch = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        # k_folds_batch = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+
+        k_folds_batch_1 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        k_folds_batch_2 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
 
         case_objects = []
         cv_gp, oracle_err_gp, oracle_err_hf_gp, kle_gp, kle_oracle_gp = nothing, nothing, nothing, nothing, nothing
@@ -466,15 +469,15 @@ for repID in 1:1
             for case in kle_cases
                 println("Rebuilding surrogate for case $case")
                 if case == "gp"
-                    cv_gp, oracle_err_gp, oracle_err_hf_gp, kle_gp, kle_oracle_gp = evaluateKLEStandardized(inputsLF[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], xmLF; 
+                    cv_gp, oracle_err_gp, oracle_err_hf_gp, kle_gp, kle_oracle_gp = evaluateKLE(inputsLF[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], xmLF; 
                     useAbsErr=0, 
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_1, 
                     HF_oracle_data=HF_oracle_data, 
                     HF_oracle_design=HF_oracle_design)
                 elseif case == "ra"
-                    cv_ra, oracle_err_ra, oracle_err_hf_ra, kle_ra, kle_oracle_ra = evaluateKLEStandardized(inputsLF[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], xmLF; 
+                    cv_ra, oracle_err_ra, oracle_err_hf_ra, kle_ra, kle_oracle_ra = evaluateKLE(inputsLF[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], xmLF; 
                     useAbsErr=0,
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_2, 
                     HF_oracle_data=HF_oracle_data, 
                     HF_oracle_design=HF_oracle_design)
                 end
@@ -483,15 +486,15 @@ for repID in 1:1
             for case in kle_cases
                 println("Rebuilding surrogate for case $case")
                 if case == "gp"
-                    cv_gp, oracle_err_gp, oracle_err_hf_gp, kle_gp, kle_oracle_gp = evaluateKLEStandardized(inputsLF_orig[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF_orig[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], xmLF; 
+                    cv_gp, oracle_err_gp, oracle_err_hf_gp, kle_gp, kle_oracle_gp = evaluateKLE(inputsLF_orig[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF_orig[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], xmLF; 
                     useAbsErr=0, 
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_1, 
                     HF_oracle_data=HF_oracle_data, 
                     HF_oracle_design=HF_oracle_design)
                 elseif case == "ra"
-                    cv_ra, oracle_err_ra, oracle_err_hf_ra, kle_ra, kle_oracle_ra = evaluateKLEStandardized(inputsLF_orig[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF_orig[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], xmLF; 
+                    cv_ra, oracle_err_ra, oracle_err_hf_ra, kle_ra, kle_oracle_ra = evaluateKLE(inputsLF_orig[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF_orig[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], xmLF; 
                     useAbsErr=0,
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_2, 
                     HF_oracle_data=HF_oracle_data, 
                     HF_oracle_design=HF_oracle_design)
                 end
@@ -610,48 +613,3 @@ for repID in 1:1
     println("Finished replication $repID")
 end
 
-
-"""
-Return the train set indices and the holdout set indices for each of the k folds.
-This version uses STABLE partitioning. Each point is assigned to a fold based on its
-index using the modulo operator. This ensures that a point's fold assignment
-never changes as more points are added, which is critical for stabilizing
-cross-validation in an active learning loop.
-"""
-function k_folds_stable(all_point_indices, k)
-    # 'all_point_indices' is the vector of unique IDs for the points in the current training set.
-    # e.g., at batch 5, this might be [1, 2, ..., 10, 16, 25, 31, 40, 55] for the HF points.
-    
-    # Initialize k empty arrays, one for each fold's holdout set.
-    holdout_sets = [Int[] for _ in 1:k]
-
-    # Assign each point to a fold based on its index.
-    for point_idx in all_point_indices
-        # The fold is determined by the point's value, not its position in the array.
-        # (point_idx - 1) % k gives a 0-based index, so we add 1 for Julia's 1-based arrays.
-        fold_assignment = (point_idx - 1) % k + 1
-        push!(holdout_sets[fold_assignment], point_idx)
-    end
-
-    # Now, construct the final (train, holdout) tuples for each fold.
-    final_folds = []
-    all_indices_set = Set(all_point_indices)
-
-    for i in 1:k
-        holdout_indices = holdout_sets[i]
-        
-        # The training indices are all points NOT in the current holdout set.
-        train_indices_set = setdiff(all_indices_set, Set(holdout_indices))
-        train_indices = collect(train_indices_set)
-        
-        # The function `evaluateKLEStandardized` expects the indices relative to the
-        # *current* data array, not the original absolute indices. We need to find
-        # the positions of our selected points within the `all_point_indices` array.
-        train_positions = findall(x -> x in train_indices_set, all_point_indices)
-        holdout_positions = findall(x -> x in holdout_indices, all_point_indices)
-        
-        push!(final_folds, (train_positions, holdout_positions))
-    end
-
-    return final_folds
-end

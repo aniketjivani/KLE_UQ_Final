@@ -47,12 +47,13 @@ dict_case1 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c1_all_modes",
             "NREPS"=> 5,
             "NFOLDS"=> 5,
             # "BUDGET_HF"=>20,
-            "BUDGET_HF"=>50,
+            "BUDGET_HF"=>60,
             "lb" => [40, 30],
             "ub" => [60, 50],
-            # "acqFunc" => "EI",
-            "chosen_lf" => "bSine",
             "acqFunc" => "EI",
+            "chosen_lf" => "bSine",
+            # "acqFunc" => "UCB",
+            # "acqFunc" => "logEI"
        )
 
 dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
@@ -60,14 +61,14 @@ dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
             "input_dir"=> "./1d_toy/1d_inputs_c2",
             "NREPS"=> 5,
             "NFOLDS"=> 5,
-            "BUDGET_HF"=>50,
+            "BUDGET_HF"=>60,
             "lb" => [40, 60],
             "ub" => [60, 80],
             "chosen_lf" => "taylor",
             "acqFunc" => "EI",
        )
 
-@assert dict_case1["acqFunc"] == dict_case2["acqFunc"]
+# @assert dict_case1["acqFunc"] == dict_case2["acqFunc"]
 
 if kle_kwargs_Δ.getAllModes == 1
     dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_all_modes", dict_case1["acqFunc"])
@@ -77,12 +78,12 @@ if kle_kwargs_Δ.getAllModes == 1
     dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_all_modes", dict_case1["acqFunc"])
     dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_all_modes", dict_case2["acqFunc"])
 elseif kle_kwargs_Δ.getAllModes == 0
-    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s", dict_case1["acqFunc"])
-    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s", dict_case1["acqFunc"])
-    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s", dict_case2["acqFunc"])
-    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s", dict_case2["acqFunc"])
-    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s", dict_case1["acqFunc"])
-    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s", dict_case2["acqFunc"])
+    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_nolog", dict_case1["acqFunc"])
+    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_nolog", dict_case1["acqFunc"])
+    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_nolog", dict_case2["acqFunc"])
+    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_nolog", dict_case2["acqFunc"])
+    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_nolog", dict_case1["acqFunc"])
+    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_nolog", dict_case2["acqFunc"])
 end
 
 
@@ -141,14 +142,13 @@ end
 
 
 ## Loop for building surrogate
-
-# repID = 1
 # for repID in 1:args_dict["NREPS"]
 for repID in 1:args_dict["NREPS"]
+# for repID in 2:2
+# for repID in 1:1
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
-    rd_seed = 20250531 + repID
-    # rd_seed = 20241201 + repID
+    rd_seed = 20250431 + repID
     Random.seed!(rd_seed)
 
     # make input directory for this replication
@@ -158,6 +158,8 @@ for repID in 1:args_dict["NREPS"]
     mkpath(joinpath(args_dict["plot_dir"], @sprintf("rep_%03d", repID)))
 
     batchID = 0
+    # for batchID in 0:(args_dict["BUDGET_HF"] - 1)
+    # for batchID in 0:25
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
         if batchID == 0
             isPilot = true
@@ -217,11 +219,28 @@ for repID in 1:args_dict["NREPS"]
             HF_data = generateHF(x, inputsHF)
         end
 
-        Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, inputsHFSubsetIdx[(nHF + 1):end]]]
+        # Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, inputsHFSubsetIdx[(nHF + 1):end]]]
+
+        delta_idx = nothing
+        Y_Delta = nothing
+        if batchID > 0
+            delta_idx = extend_vector(inputsHFSubsetIdx[1:nPilotHF], inputsHFSubsetIdx[(nPilotHF + 1):nHF])
+
+            print(delta_idx)
+
+            Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, delta_idx]]
+        else
+            Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, inputsHFSubsetIdx[(nHF + 1):end]]]
+        end
 
         # Generate k-fold indices (for half the dataset, repeat)
 
-        k_folds_batch = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        k_folds_batch_1 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        k_folds_batch_2 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
+
+        # k_folds_batch_1 = k_folds_expanded(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        # k_folds_batch_2 = k_folds_expanded(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
+
 
         case_objects = []
         cv_gp, oracle_gp, kle_gp = nothing, nothing, nothing
@@ -233,13 +252,13 @@ for repID in 1:args_dict["NREPS"]
                 if case == "gp"
                     cv_gp, oracle_gp, kle_gp = evaluateKLE(inputsLF[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], x; 
                     useAbsErr=0, 
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_1, 
                     grid_a_scaled=a_grid_scaled, 
                     grid_b_scaled=b_grid_scaled)
                 elseif case == "ra"
                     cv_ra, oracle_ra, kle_ra = evaluateKLE(inputsLF[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], x; 
                     useAbsErr=0,
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_2, 
                     grid_a_scaled=a_grid_scaled, 
                     grid_b_scaled=b_grid_scaled)
                 end
@@ -250,13 +269,13 @@ for repID in 1:args_dict["NREPS"]
                 if case == "gp"
                     cv_gp, oracle_gp, kle_gp = evaluateKLE(inputsLF_orig[1:nLF, :], LF_data[:, 1:nLF], inputsHFSubsetIdx[1:nHF], inputsHF_orig[1:nHF, :], HF_data[:, 1:nHF], Y_Delta[:, 1:nHF], x; 
                     useAbsErr=0, 
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_1, 
                     grid_a_scaled=a_grid_scaled, 
                     grid_b_scaled=b_grid_scaled)
                 elseif case == "ra"
                     cv_ra, oracle_ra, kle_ra = evaluateKLE(inputsLF_orig[(nLF + 1):end, :], LF_data[:, (nLF + 1):end], inputsHFSubsetIdx[(nHF + 1):end], inputsHF_orig[(nHF + 1):end, :], HF_data[:, (nHF + 1):end], Y_Delta[:, (nHF + 1):end], x; 
                     useAbsErr=0,
-                    all_folds=k_folds_batch, 
+                    all_folds=k_folds_batch_2, 
                     grid_a_scaled=a_grid_scaled, 
                     grid_b_scaled=b_grid_scaled)
                 end
@@ -266,7 +285,8 @@ for repID in 1:args_dict["NREPS"]
         npzwrite(joinpath(args_dict["data_dir"], 
         # args_dict["rep_dir"],
         @sprintf("rep_%03d", repID), 
-        @sprintf("case_objects_batch_%03d.npz", batchID)), Dict("cv_gp"=> cv_gp,
+        @sprintf("case_objects_batch_%03d.npz", batchID)), 
+        Dict("cv_gp"=> cv_gp,
             "oracle_gp"=> oracle_gp,
             # "kle_gp"=> kle_gp,
             "cv_ra"=> cv_ra,
@@ -305,7 +325,8 @@ for repID in 1:args_dict["NREPS"]
                 repID,
                 batch_num,
                 # log.(cv_gp[2]),
-                log.(cv_gp),
+                # log.(cv_gp),
+                cv_gp,
                 inputsHF_orig,
                 inputsLF_orig,
                 inputsHFSubsetIdx,
@@ -324,7 +345,8 @@ for repID in 1:args_dict["NREPS"]
             repID,
             batch_num,
             # log.(cv_gp[2]),
-            log.(cv_gp),
+            # log.(cv_gp),
+            cv_gp,
             inputsHF,
             inputsLF,
             inputsHFSubsetIdx,
