@@ -46,14 +46,12 @@ dict_case1 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c1_all_modes",
             "input_dir"=> "./1d_toy/1d_inputs_c1_all_modes",
             "NREPS"=> 5,
             "NFOLDS"=> 5,
-            # "BUDGET_HF"=>20,
             "BUDGET_HF"=>60,
             "lb" => [40, 30],
             "ub" => [60, 50],
             "acqFunc" => "EI",
             "chosen_lf" => "bSine",
-            # "acqFunc" => "UCB",
-            # "acqFunc" => "logEI"
+            "case" => "max",
        )
 
 dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
@@ -61,31 +59,16 @@ dict_case2 = Dict("plot_dir"=> "./Plots/1d_toy_plots_long_c2",
             "input_dir"=> "./1d_toy/1d_inputs_c2",
             "NREPS"=> 5,
             "NFOLDS"=> 5,
+            # "BUDGET_HF"=>60,
             "BUDGET_HF"=>60,
             "lb" => [40, 60],
             "ub" => [60, 80],
             "chosen_lf" => "taylor",
             "acqFunc" => "EI",
+            "case" => "max",
        )
 
 # @assert dict_case1["acqFunc"] == dict_case2["acqFunc"]
-
-if kle_kwargs_Δ.getAllModes == 1
-    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_all_modes", dict_case1["acqFunc"])
-    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_all_modes", dict_case1["acqFunc"])
-    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_all_modes", dict_case2["acqFunc"])
-    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_all_modes", dict_case2["acqFunc"])
-    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_all_modes", dict_case1["acqFunc"])
-    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_all_modes", dict_case2["acqFunc"])
-elseif kle_kwargs_Δ.getAllModes == 0
-    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_nolog", dict_case1["acqFunc"])
-    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_nolog", dict_case1["acqFunc"])
-    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_nolog", dict_case2["acqFunc"])
-    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_nolog", dict_case2["acqFunc"])
-    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_nolog", dict_case1["acqFunc"])
-    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_nolog", dict_case2["acqFunc"])
-end
-
 
 chosen_case = 2
 if chosen_case == 1
@@ -94,9 +77,35 @@ elseif chosen_case == 2
     args_dict = dict_case2
 end
 
+if kle_kwargs_Δ.getAllModes == 1
+    dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_all_modes_%s", dict_case1["acqFunc"], args_dict["case"])
+    dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_all_modes_%s", dict_case1["acqFunc"], args_dict["case"])
+    dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_all_modes_%s", dict_case2["acqFunc"],
+    args_dict["case"])
+    dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_all_modes_%s", dict_case2["acqFunc"],
+    args_dict["case"])
+    dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_all_modes_%s", dict_case1["acqFunc"], args_dict["case"])
+    dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_all_modes_%s", dict_case2["acqFunc"], args_dict["case"])
+elseif kle_kwargs_Δ.getAllModes == 0
+    if args_dict["case"] == "min"
+        dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_nolog_%s_loo", dict_case1["acqFunc"], args_dict["case"])
+        dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_nolog_%s_loo", dict_case1["acqFunc"], args_dict["case"])
+        dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_nolog_%s_loo", dict_case2["acqFunc"], args_dict["case"])
+        dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_nolog_%s_loo", dict_case2["acqFunc"], args_dict["case"])
+        dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_nolog_%s_loo", dict_case1["acqFunc"], args_dict["case"])
+        dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_nolog_%s_loo", dict_case2["acqFunc"], args_dict["case"])
+    else
+        dict_case1["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c1_%s_nolog_loo", dict_case1["acqFunc"])
+        dict_case1["input_dir"] = @sprintf("./1d_toy/1d_inputs_c1_%s_nolog_loo", dict_case1["acqFunc"])
+        dict_case2["data_dir"] = @sprintf("./1d_toy/1d_pred_data_c2_%s_nolog_loo", dict_case2["acqFunc"])
+        dict_case2["input_dir"] = @sprintf("./1d_toy/1d_inputs_c2_%s_nolog_loo", dict_case2["acqFunc"])
+        dict_case1["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c1_%s_nolog_loo", dict_case1["acqFunc"])
+        dict_case2["plot_dir"] = @sprintf("./Plots/1d_toy_plots_long_c2_%s_nolog_loo", dict_case2["acqFunc"])
+    end
+end
+
 sys = pyimport("sys")
 pkl = pyimport("pickle")
-
 kle_cases = ["gp", "ra"]
 
 lb = args_dict["lb"]
@@ -121,9 +130,25 @@ b_grid_scaled = 2 * (b_grid .- (1/2)*(lb[2] + ub[2])) ./ (ub[2] - lb[2])
 if !isfile(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case))
     HF_oracle = generateOracleData(a_grid, b_grid, x)
     JLD.save(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case), "HF_oracle", HF_oracle)
+    LF_oracle = generateOracleDataLF(a_grid, b_grid, x; chosen_case=chosen_case)
+    open(@sprintf("./1d_toy/LF_Oracle_case_%02d.jls", chosen_case), "w") do io
+        serialize(io, LF_oracle)
+    end
 else
     HF_oracle = JLD.load(@sprintf("./1d_toy/HF_Oracle_case_%02d.jld", chosen_case))["HF_oracle"]
+    LF_oracle = deserialize(@sprintf("./1d_toy/LF_Oracle_case_%02d.jls", chosen_case))
+    delta_oracle = HF_oracle .- LF_oracle
+    oracle_errs_hf_lf = zeros(length(a_grid), length(b_grid))
+    for i in 1:length(a_grid)
+        for j in 1:length(b_grid)
+            oracle_errs_hf_lf[i, j] = ϵAbs1(HF_oracle[i, j, :], LF_oracle[i, j, :])
+        end
+    end
 end
+
+# contour plot of oracle error.
+heatmap(a_grid, b_grid, 
+c=:viridis, oracle_errs_hf_lf'; xlabel="a", ylabel="b", title="Oracle Errors")
 
 function to_dict(obj::KLEObject)
     return Dict(
@@ -143,9 +168,9 @@ end
 
 ## Loop for building surrogate
 # for repID in 1:args_dict["NREPS"]
+# for repID in 1:args_dict["NREPS"]
 for repID in 1:args_dict["NREPS"]
-# for repID in 2:2
-# for repID in 1:1
+# for repID in 1:5
     println("Starting repetition $repID")
     # Specify a new random seed for each repetition
     rd_seed = 20250431 + repID
@@ -158,7 +183,7 @@ for repID in 1:args_dict["NREPS"]
     mkpath(joinpath(args_dict["plot_dir"], @sprintf("rep_%03d", repID)))
 
     batchID = 0
-    # for batchID in 0:(args_dict["BUDGET_HF"] - 1)
+    # for batchID in 60:(args_dict["BUDGET_HF"] - 1)
     # for batchID in 0:25
     for batchID in 0:(args_dict["BUDGET_HF"] - 1)
         if batchID == 0
@@ -226,7 +251,6 @@ for repID in 1:args_dict["NREPS"]
         if batchID > 0
             delta_idx = extend_vector(inputsHFSubsetIdx[1:nPilotHF], inputsHFSubsetIdx[(nPilotHF + 1):nHF])
 
-            print(delta_idx)
 
             Y_Delta = [HF_data[:, 1:nHF] - LF_data[:, inputsHFSubsetIdx[1:nHF]] HF_data[:, (nHF + 1):end] - LF_data[:, delta_idx]]
         else
@@ -235,11 +259,12 @@ for repID in 1:args_dict["NREPS"]
 
         # Generate k-fold indices (for half the dataset, repeat)
 
-        k_folds_batch_1 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
-        k_folds_batch_2 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
+        # k_folds_batch_1 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
+        # k_folds_batch_2 = k_folds(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
 
-        # k_folds_batch_1 = k_folds_expanded(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed))
-        # k_folds_batch_2 = k_folds_expanded(inputsHFSubsetIdx[1:nHF], args_dict["NFOLDS"]; rng_gen=MersenneTwister(rd_seed + 200))
+        k_folds_batch_1 = k_folds(inputsHFSubsetIdx[1:nHF], length(inputsHFSubsetIdx[1:nHF]); rng_gen=MersenneTwister(rd_seed))
+        k_folds_batch_2 = k_folds(inputsHFSubsetIdx[1:nHF], 
+        length(inputsHFSubsetIdx[1:nHF]);rng_gen=MersenneTwister(rd_seed + 200))
 
 
         case_objects = []
@@ -330,7 +355,8 @@ for repID in 1:args_dict["NREPS"]
                 inputsHF_orig,
                 inputsLF_orig,
                 inputsHFSubsetIdx,
-                acqFunc
+                acqFunc,
+                args_dict["case"]
                 ]
         else
             sys.argv = ["./1d_toy/botorch_optim_point_selection_1d_final.py",
@@ -350,7 +376,8 @@ for repID in 1:args_dict["NREPS"]
             inputsHF,
             inputsLF,
             inputsHFSubsetIdx,
-            acqFunc
+            acqFunc,
+            args_dict["case"]
             ]
         end
         
