@@ -1,7 +1,14 @@
 *~
 *.pdf
 *.png
-1d_toy/1d_inputs
-1d_toy/1d_pred_data
+1d_toy/1d_inputs_*
+1d_toy/1d_pred_data_*
 *.jld
 *.txt
+2d_pde/2d_oracle_data
+2d_pde/2d_oracle_HF_data*
+2d_pde/2d_output_dir
+2d_pde/2d_inputs_*
+2d_pde/dirHF
+2d_pde/dirLF
+2d_pde/2d_pred_data_*
