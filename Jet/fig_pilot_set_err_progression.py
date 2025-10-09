@@ -13,7 +13,7 @@ import numpy as np
 import sys
 import h5py
 
-saveFig = False
+saveFig = True
 
 sys.path.insert(0, "/Users/ajivani/Desktop/Research/KLE_UQ_Final/1d_toy/")
 
@@ -42,7 +42,7 @@ nPilotLF = 200
 nPilotHF = 15
 
 # %%
-f = h5py.File("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/PilotBatchData.jld", "r")
+f = h5py.File("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/PilotBatchData.jld", "r")
 # keys = ['HFLFID','_creator','xbyD','xiHF1','xiLF1','yHFUU','yHFUW','yHFV','yLFUU','yLFUW','yLFV']
 xi_LF_Pilot = f["xiLF1"][:].T
 xi_HF_Pilot = f["xiHF1"][:].T
@@ -77,7 +77,7 @@ common_hf_lf_colors = colorblind_colors[:n_lines_hf]
 lf_single_color = colorblind_colors[-1]
 
 # %%
-test_pts_mat = h5py.File("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/JetTestPts.mat", "r")
+test_pts_mat = h5py.File("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/JetTestPts.mat", "r")
 
 test_pts = test_pts_mat['test_points'][:].T
 test_pts_scaled = 0.5 * test_pts * (ub - lb) + 0.5 * (ub + lb)
@@ -189,6 +189,9 @@ ax.scatter(hf_all_batches[0][:, 0],
            linewidth=1.5,
            label="Pilot HF Simulations")
 
+for x, y, z in zip(hf_all_batches[0][:, 0], hf_all_batches[0][:, 1], hf_all_batches[0][:, 2]):
+        ax.plot([x, x], [y, y], [0, z], color='black', alpha=0.9, linewidth=1.2)
+
 # Plot acquisition batches
 for i in range(1, n_batch_total):
     ax.scatter(hf_all_batches[i][:, 0],
@@ -202,17 +205,22 @@ for i in range(1, n_batch_total):
                edgecolor='black',
                label="")
 
+    # Projection lines for less ambiguity
+    for x, y, z in zip(hf_all_batches[i][:, 0], hf_all_batches[i][:, 1], hf_all_batches[i][:, 2]):
+        ax.plot([x, x], [y, y], [0, z], color='black', alpha=0.9, linewidth=1.2)
+
 ax.set_title("Selected Points (Batch AL)", fontsize=28, pad=20)
 ax.legend(bbox_to_anchor=(0.25, 0.96), loc='upper left', fontsize=16)
 # ax.view_init(elev=20, azim=45)
-ax.grid(True, alpha=0.3)
-
+ax.grid(True, alpha=0.1)
+# ax.grid(False)
 # Increase tick label size and padding
 ax.tick_params(axis='x', which='major', pad=10, labelsize=14)
 ax.tick_params(axis='y', which='major', pad=10, labelsize=14)
 ax.tick_params(axis='z', which='major', pad=10, labelsize=14)
 
-plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/3D_scatter_HF_acq_order.png", bbox_inches='tight', dpi=200)
+if saveFig:
+    plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/3D_scatter_HF_acq_order.png", bbox_inches='tight', dpi=200)
 
 # %% line plots of err progression
 
@@ -245,7 +253,8 @@ plt.ylabel("Average LOO Error", fontsize=22)
 # set tick label size
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
-plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/err_progression_HF_AL.jpg", bbox_inches='tight', dpi=200)
+if saveFig:
+    plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/err_progression_HF_AL.jpg", bbox_inches='tight', dpi=200)
 
 # %%
 fig2, ax2 = plt.subplots(figsize=(6, 1))
@@ -256,7 +265,7 @@ cbar = fig2.colorbar(cb1, cax=ax2, orientation='horizontal')
 cbar.set_label('Acquisition Order', fontsize=22)
 cbar.ax.tick_params(labelsize=14)
 
-
-plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/3D_scatter_HF_acq_order.jpg", bbox_inches='tight', dpi=200)
+if saveFig:
+    plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/3D_scatter_HF_acq_order.jpg", bbox_inches='tight', dpi=200)
 
 # %%
