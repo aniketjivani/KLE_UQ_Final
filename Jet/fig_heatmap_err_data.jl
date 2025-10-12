@@ -9,6 +9,7 @@ using SpecialFunctions
 using Distributions
 using PyCall
 using JLD
+using NPZ
 using CSV
 using MAT
 using DataFrames
@@ -126,6 +127,8 @@ function getTestErrors(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, 
 		yHFPred[:, i] = (klModes_HF * bβHF * ΨTest_LF) + YMeanHF # psi test will be same for LF and HF in this case.
         if type == "hfpred"
 		    push!(testErrors, ϵ2(yHFPred[:, i], yPredicted[:, i]))
+        # elseif type == "hfpred" and hf_oracle != nothing
+        #     push!(testErrors, ϵ2(hf_oracle[:, i], yPredicted[:, i]))
         elseif type == "hforacle" # where true HF data is available.
             push!(testErrors, ϵ2(hf_oracle[:, i], yPredicted[:, i]))
         end
@@ -202,10 +205,16 @@ for bID in 0:(n_batches - 1)
     push!(all_batch_rem_budget_errs, mean_test_errs)
 end
 
-open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataRemBudget_AL.jls", "w") do io
-    serialize(io, all_batch_rem_budget_errs)
+# open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataRemBudget_AL.jls", "w") do io
+#     serialize(io, all_batch_rem_budget_errs)
+# end
+
+rem_budget_errs = zeros(50, 8)
+for bID in 0:(n_batches - 1)
+    rem_budget_errs[1:length(all_batch_rem_budget_errs[bID + 1]), bID + 1] = all_batch_rem_budget_errs[bID + 1]
 end
 
+npzwrite("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataRemBudget_AL.npy", rem_budget_errs)
 
 # get errors on random test set, in "hforacle" mode.
 all_batch_holdout_rs_errs = []
@@ -247,88 +256,204 @@ for bID in 0:(n_batches)
     push!(all_batch_holdout_rs_errs, mean_test_errs)
 end
 
-open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_RS_SurrAL.jls", "w") do io
-    serialize(io, all_batch_holdout_rs_errs)
+# open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_RS_SurrAL.jls", "w") do io
+#     serialize(io, all_batch_holdout_rs_errs)
+# end
+
+holdout_rs_errs = zeros(size(yHF_V_Random, 2), n_batch_total)
+for bID in 0:(n_batches)
+    holdout_rs_errs[:, bID + 1] = all_batch_holdout_rs_errs[bID + 1]
+end
+npzwrite("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_RS_SurrAL.npy", holdout_rs_errs)
+
+
+# set hifi-KLE dataset for holdout test points to combination of random and AL simulations.
+xi_HF_combined = [xi_HF_all; xi_HF_Random]
+yHF_V_combined = [yHF_V_All yHF_V_Random]
+yHF_UU_combined = [yHF_UU_All yHF_UU_Random]
+yHF_UW_combined = [yHF_UW_All yHF_UW_Random]
+
+function getTestErrorsPred(xi_LF, yLF_data, HF_LF_ID, xi_HF, xi_HF_KLE, yHF_data, yDelta_data, grid; type="hfpred", test_points=nothing)
+	yPredicted = zeros(size(yLF_data, 1), size(test_points, 1))
+	yHFPred = zeros(size(yLF_data, 1), size(test_points, 1))
+	yLFPred = zeros(size(yLF_data, 1), size(test_points, 1))
+	
+	QLF, λLF, bβLF, regLF, YMeanLF = buildKLE(xi_LF, yLF_data, grid; kle_kwargs...)
+	QDelta, λDelta, bβDelta, regDelta, YMeanDelta = buildKLE(xi_HF, yDelta_data, grid; kle_kwargs_Δ...)
+	QHF, λHF, bβHF, regHF, YMeanHF = buildKLE(xi_HF_KLE, yHF_data, grid; kle_kwargs...)
+	testErrors = []
+	for i in 1:size(test_points, 1)
+		ΨTest_LF = PrepCaseA(test_points[i, :]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
+		ΨTest_Δ = PrepCaseA(test_points[i, :]'; order=kle_kwargs_Δ.order, dims=kle_kwargs_Δ.dims)'
+
+		klModes_LF = QLF .* sqrt.(λLF)'
+		klModes_HF = QHF .* sqrt.(λHF)'
+		klModes_Δ  = QDelta .* sqrt.(λDelta)'
+		
+		yPredicted[:, i] = (klModes_LF * bβLF * ΨTest_LF) + YMeanLF + (klModes_Δ * bβDelta * ΨTest_Δ) + YMeanDelta
+
+		yLFPred[:, i] = (klModes_LF * bβLF * ΨTest_LF) + YMeanLF
+		yHFPred[:, i] = (klModes_HF * bβHF * ΨTest_LF) + YMeanHF # psi test will be same for LF and HF in this case.
+        if type == "hfpred"
+		    push!(testErrors, ϵ2(yHFPred[:, i], yPredicted[:, i]))
+        end
+	end
+	return yPredicted, yLFPred, yHFPred, testErrors
 end
 
-# get errors on fixed test set, in "hfpred" mode.
-all_batch_holdout_test_errs = []
+# # get errors on fixed test set, in "hfpred" mode.
+# all_batch_holdout_test_errs = []
+# for bID in 0:(n_batches)
+#     println("Batch ID: $bID")
+#     println("Using first $(nLF_Pilot + bID * batch_size) LF points and first $(nHF_Pilot + bID * batch_size) HF points.")
+#     _, _, _, testErrors_V = getTestErrorsPred(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_V_All[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
+#     # xi_HF_combined,
+#     # # yHF_V_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # yHF_V_combined,
+#     xi_HF_all,
+#     yHF_V_All,
+#     yDelta_V_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     _, _, _, testErrors_UU = getTestErrorsPred(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_UU_All[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
+#     # xi_HF_combined,
+#     # # yHF_UU_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # yHF_UU_combined,
+#     xi_HF_all,
+#     yHF_UU_All,
+#     yDelta_UU_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     _, _, _, testErrors_UW = getTestErrorsPred(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_UW_All[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
+#     # xi_HF_combined,
+#     # # yHF_UW_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # yHF_UW_combined,
+#     xi_HF_all,
+#     yHF_UW_All,
+#     yDelta_UW_All[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
+#     push!(all_batch_holdout_test_errs, mean_test_errs)
+# end
+
+# # open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrAL.jls", "w") do io
+# #     serialize(io, all_batch_holdout_test_errs)
+# # end
+
+# holdout_test_errs = zeros(size(test_points_all, 1), n_batch_total)
+# for bID in 0:(n_batches)
+#     holdout_test_errs[:, bID + 1] = all_batch_holdout_test_errs[bID + 1]
+# end
+# npzwrite("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrAL.npy", holdout_test_errs)
+
+# # obtain similar holdout test err with surrogate built via random sampling. (one shot)
+# all_batch_holdout_test_errs_random = []
+# for bID in 0:(n_batches_random)
+#     println("Batch ID: $bID")
+#     println("Using first $(nLF_Pilot + bID * batch_size) LF points and first $(nHF_Pilot + bID * batch_size) HF points.")
+#     _, _, _, testErrors_V = getTestErrorsPred(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_V_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
+#     # # xi_HF_combined,
+#     # # # yHF_V_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # # yHF_V_combined,
+#     # xi_HF_all_random,
+#     # yHF_V_all_random,
+#     xi_HF_all,
+#     yHF_V_All,
+#     yDelta_V_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     _, _, _, testErrors_UU = getTestErrorsPred(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_UU_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
+#     # # xi_HF_combined,
+#     # # # yHF_UU_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # # yHF_UU_combined,
+#     # xi_HF_all_random,
+#     # yHF_UU_all_random,
+#     xi_HF_all,
+#     yHF_UU_All,
+#     yDelta_UU_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     _, _, _, testErrors_UW = getTestErrorsPred(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
+#     yLF_UW_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
+#     HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
+#     xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
+#     # # xi_HF_combined,
+#     # # # yHF_UW_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     # # yHF_UW_combined,
+#     # xi_HF_all_random,
+#     # yHF_UW_all_random,
+#     xi_HF_all,
+#     yHF_UW_All,
+#     yDelta_UW_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
+#     xbyD; type="hfpred",
+#     test_points=test_points_all);
+
+#     mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
+
+#     push!(all_batch_holdout_test_errs_random, mean_test_errs)
+# end
+
+# # open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrRandom.jls", "w") do io
+# #     serialize(io, all_batch_holdout_test_errs_random)
+# # end
+
+# holdout_test_errs_random = zeros(size(test_points_all, 1), n_batches_random + 1)
+# for bID in 0:(n_batches_random)
+#     holdout_test_errs_random[:, bID + 1] = all_batch_holdout_test_errs_random[bID + 1]
+# end
+# npzwrite("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrRandom.npy", holdout_test_errs_random)
+
+
+# load mean errors per batch.
+all_batch_train_budget_errs = []
+
 for bID in 0:(n_batches)
     println("Batch ID: $bID")
-    println("Using first $(nLF_Pilot + bID * batch_size) LF points and first $(nHF_Pilot + bID * batch_size) HF points.")
-    _, _, _, testErrors_V = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_V_All[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_V_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_V_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
+    
+    if bID != n_batches
+        mean_errs = readdlm(@sprintf("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/MeanErrorBatch%02d.txt", bID + 1))
+    else
+        mean_errs = readdlm("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/MeanErrorFinal.txt")
+    end
 
-    _, _, _, testErrors_UU = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_UU_All[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_UU_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_UU_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
-
-    _, _, _, testErrors_UW = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_UW_All[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_UW_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_UW_All[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
-
-    mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
-    push!(all_batch_holdout_test_errs, mean_test_errs)
+    push!(all_batch_train_budget_errs, mean_errs)
 end
 
-open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrAL.jls", "w") do io
-    serialize(io, all_batch_holdout_test_errs)
+# open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataTrainBudget_AL.jls", "w") do io
+#     serialize(io, all_batch_train_budget_errs)
+# end
+
+train_budget_errs = zeros(50, 8)
+
+for bID in 0:(n_batches)
+    if bID != n_batches
+        mean_errs = readdlm(@sprintf("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/MeanErrorBatch%02d.txt", bID + 1))
+    else
+        mean_errs = readdlm("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/MeanErrorFinal.txt")
+    end
+    train_budget_errs[1:length(mean_errs), bID + 1] = mean_errs
 end
 
 
-# obtain similar holdout test err with surrogate built via random sampling. (one shot)
-all_batch_holdout_test_errs_random = []
-for bID in 0:(n_batches_random)
-    println("Batch ID: $bID")
-    println("Using first $(nLF_Pilot + bID * batch_size) LF points and first $(nHF_Pilot + bID * batch_size) HF points.")
-    _, _, _, testErrors_V = getTestErrors(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_V_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_V_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_V_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
-
-    _, _, _, testErrors_UU = getTestErrors(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_UU_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_UU_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_UU_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
-
-    _, _, _, testErrors_UW = getTestErrors(xi_LF_all_random[1:(nLF_Pilot + bID * batch_size), :],
-    yLF_UW_all_random[:, 1:(nLF_Pilot + bID * batch_size)],
-    HFLF_ID_all_random[1:(nHF_Pilot + bID * batch_size)],
-    xi_HF_all_random[1:(nHF_Pilot + bID * batch_size), :],
-    yHF_UW_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    yDelta_UW_all_random[:, 1:(nHF_Pilot + bID * batch_size)],
-    xbyD; type="hfpred",
-    test_points=test_points_all);
-
-    mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
-
-    push!(all_batch_holdout_test_errs_random, mean_test_errs)
-end
-
-open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrRandom.jls", "w") do io
-    serialize(io, all_batch_holdout_test_errs_random)
-end
+npzwrite("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataTrainBudget_AL.npy", train_budget_errs)
