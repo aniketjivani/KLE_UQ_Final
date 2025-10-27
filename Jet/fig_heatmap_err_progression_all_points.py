@@ -101,6 +101,11 @@ holdout_test_errs = np.load("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/da
 
 holdout_test_errs_random = np.load("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataHoldout_TestPts_SurrRandom.npy")
 
+uq_al_pred = np.load("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/UQPredsAL.npz")
+
+uq_random_pred = np.load("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/UQPredsRandom.npz")
+
+
 # %% 
 rem_budget_errs2 = np.zeros_like(rem_budget_errs)
 
@@ -136,6 +141,10 @@ for i in range(8):
 plt.plot(xbyD, holdout_rs_hf_true[:, 1, 0], color="black", linewidth=2.5)
 plt.xlabel(r"$x/D$", fontsize=16)
 plt.ylabel(qoi_labels[0], fontsize=16)
+
+# increase size of tick labels
+plt.tick_params(axis='both', which='major', labelsize=14)
+
 plt.xlim(xbyD.min(), xbyD.max())
 
 fig.add_subplot(132)
@@ -145,7 +154,7 @@ plt.plot(xbyD, holdout_rs_hf_true[:, 1, 1], color="black", linewidth=2.5)
 plt.xlabel(r"$x/D$", fontsize=16)
 plt.ylabel(qoi_labels[1], fontsize=16)
 plt.xlim(xbyD.min(), xbyD.max())
-
+plt.tick_params(axis='both', which='major', labelsize=14)
 fig.add_subplot(133)
 for i in range(8):
     plt.plot(xbyD, holdout_rs_bf_preds[:, 1, i, 2], color=cmap_lines[i])
@@ -154,7 +163,57 @@ plt.xlabel(r"$x/D$", fontsize=16)
 plt.ylabel(qoi_labels[2], fontsize=16)
 plt.xlim(xbyD.min(), xbyD.max())
 plt.tight_layout()
+plt.tick_params(axis='both', which='major', labelsize=14)
+# plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/BFPredictionsHoldout_RS_Run2_SurrAL.jpg", bbox_inches='tight', dpi=200)
 
-plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/BFPredictionsHoldout_RS_Run2_SurrAL.jpg", bbox_inches='tight', dpi=200)
+# %%
+
+fig, ax = plt.subplots(figsize=(6, 12))
+
+cmin = min(holdout_rs_errs.min(), holdout_al_errs.min())
+cmax = max(holdout_rs_errs.max(), holdout_al_errs.max())
+
+im = ax.imshow(holdout_rs_errs,
+          vmin=cmin,
+          vmax=cmax,
+          cmap=ListedColormap(parula_colors))
+
+ax.set_yticks(np.array([0, 4, 9, 14, 19, 24]))
+ax.set_yticklabels([1, 5, 10, 15, 20, 25], fontsize=14)
+
+ax.set_xticks([0, 2, 4, 6])
+ax.set_xticklabels([1, 3, 5, 7], fontsize=14)
+
+fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+ax.set_xlabel("Acquisition Stage", fontsize=16)
+ax.set_ylabel("RS Run ID", fontsize=16)
+ax.set_title("BF-KLE-AL", fontsize=18)
+plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/HeatmapErrHoldout_RS_SurrAL.jpg", bbox_inches='tight', dpi=200)
+
+
+# %%
+
+fig, ax = plt.subplots(figsize=(6, 12))
+im = ax.imshow(holdout_al_errs,
+          vmin=cmin,
+          vmax=cmax,
+        #   cmap="viridis"
+        cmap=ListedColormap(parula_colors)
+          )
+
+ax.set_yticks(np.array([0, 4, 9, 14, 19, 24, 29, 34]))
+ax.set_yticklabels([1, 5, 10, 15, 20, 25, 30, 35], fontsize=14)
+
+ax.set_xticks([0, 1, 2, 3, 4])
+ax.set_xticklabels([1, 2, 3, 4, 5],
+                    fontsize=14)
+fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+ax.set_xlabel("Acquisition Stage", fontsize=16)
+ax.set_ylabel("AL Run ID", fontsize=16)
+ax.set_title("BF-KLE-RS", fontsize=18)
+
+plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/HeatmapErrHoldout_AL_SurrRS.jpg", bbox_inches='tight', dpi=200)
 
 # %%
