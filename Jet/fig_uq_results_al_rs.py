@@ -55,7 +55,7 @@ nPilotHF = 15
 
 # %%
 f = h5py.File("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/PilotBatchData.jld", "r")
-# keys = ['HFLFID','_creator','xbyD','xiHF1','xiLF1','yHFUU','yHFUW','yHFV','yLFUU','yLFUW','yLFV']
+
 xi_LF_Pilot = f["xiLF1"][:].T
 xi_HF_Pilot = f["xiHF1"][:].T
 xbyD = f["xbyD"][:].T
@@ -186,24 +186,22 @@ fig, ax = plt.subplots(2, 3, figsize=(18, 8), sharex=True)
 # plot_gp_confidence_interval(ax[0, 0], xbyD, stats_V_AL[0][0], stats_V_AL[0][1], COLORS['BF'], 'BF Surrogate')
 
 # plot line with error bars for BF surrogate
+plot_gp_confidence_interval(ax[0, 0], xbyD, stats_V_AL[2][0], stats_V_AL[2][1], COLORS['HF'], label=r"$\tilde{y}_{\mathrm{HF}}$", hatching='//', ls='-.')
 ax[0, 0].errorbar(xbyD[::10], stats_V_AL[0][0][::10], yerr=stats_V_AL[0][1][::10], color=COLORS['BF'], 
-                  linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
-
-
-plot_gp_confidence_interval(ax[0, 0], xbyD, stats_V_AL[1][0], stats_V_AL[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[0, 0], xbyD, stats_V_AL[2][0], stats_V_AL[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
+                  linewidth=LINE_WIDTH, linestyle=':', label=r"$\tilde{y}_{\mathrm{BF}}$", capsize=5)
+plot_gp_confidence_interval(ax[0, 0], xbyD, stats_V_AL[1][0], stats_V_AL[1][1], COLORS['LF'], label=r"$\tilde{y}_{\mathrm{LF}}$", ls='--')
 
 # plot_gp_confidence_interval(ax[0, 1], xbyD, stats_UU_AL[0][0], stats_UU_AL[0][1], COLORS['BF'], 'BF Surrogate')
+plot_gp_confidence_interval(ax[0, 1], xbyD, stats_UU_AL[2][0], stats_UU_AL[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 ax[0, 1].errorbar(xbyD[::10], stats_UU_AL[0][0][::10], yerr=stats_UU_AL[0][1][::10], color=COLORS['BF'], 
                   linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
 plot_gp_confidence_interval(ax[0, 1], xbyD, stats_UU_AL[1][0], stats_UU_AL[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[0, 1], xbyD, stats_UU_AL[2][0], stats_UU_AL[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 
 # plot_gp_confidence_interval(ax[0, 2], xbyD, stats_UW_AL[0][0], stats_UW_AL[0][1], COLORS['BF'], 'BF Surrogate')
+plot_gp_confidence_interval(ax[0, 2], xbyD, stats_UW_AL[2][0], stats_UW_AL[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 ax[0, 2].errorbar(xbyD[::10], stats_UW_AL[0][0][::10], yerr=stats_UW_AL[0][1][::10], color=COLORS['BF'], 
                   linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
 plot_gp_confidence_interval(ax[0, 2], xbyD, stats_UW_AL[1][0], stats_UW_AL[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[0, 2], xbyD, stats_UW_AL[2][0], stats_UW_AL[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 
 for i, a in enumerate(ax[0, :]):
     a.set_title(qoi_labels[i], fontsize=24)
@@ -212,22 +210,28 @@ for i, a in enumerate(ax[0, :]):
 
 
 # plot_gp_confidence_interval(ax[1, 0], xbyD, stats_V_RS[0][0], stats_V_RS[0][1], COLORS['BF'], 'BF Surrogate')
+
+plot_gp_confidence_interval(ax[1, 0], xbyD, stats_V_RS[2][0], stats_V_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 ax[1, 0].errorbar(xbyD[::10], stats_V_RS[0][0][::10], yerr=stats_V_RS[0][1][::10], color=COLORS['BF'], 
                   linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
 plot_gp_confidence_interval(ax[1, 0], xbyD, stats_V_RS[1][0], stats_V_RS[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[1, 0], xbyD, stats_V_RS[2][0], stats_V_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 
+
+
+# plot_gp_confidence_interval(ax[1, 1], xbyD, stats_UU_RS[0][0], stats_UU_RS[0][1], COLORS['BF'], 'BF Surrogate')
+plot_gp_confidence_interval(ax[1, 1], xbyD, stats_UU_RS[2][0], stats_UU_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 ax[1, 1].errorbar(xbyD[::10], stats_UU_RS[0][0][::10], yerr=stats_UU_RS[0][1][::10], color=COLORS['BF'], 
                   linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
-# plot_gp_confidence_interval(ax[1, 1], xbyD, stats_UU_RS[0][0], stats_UU_RS[0][1], COLORS['BF'], 'BF Surrogate')
 plot_gp_confidence_interval(ax[1, 1], xbyD, stats_UU_RS[1][0], stats_UU_RS[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[1, 1], xbyD, stats_UU_RS[2][0], stats_UU_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 
+
+plot_gp_confidence_interval(ax[1, 2], xbyD, stats_UW_RS[2][0], stats_UW_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
 ax[1, 2].errorbar(xbyD[::10], stats_UW_RS[0][0][::10], yerr=stats_UW_RS[0][1][::10], color=COLORS['BF'], 
                   linewidth=LINE_WIDTH, linestyle=':', label='BF Surrogate', capsize=5)
+
 # plot_gp_confidence_interval(ax[1, 2], xbyD, stats_UW_RS[0][0], stats_UW_RS[0][1], COLORS['BF'], 'BF Surrogate')
 plot_gp_confidence_interval(ax[1, 2], xbyD, stats_UW_RS[1][0], stats_UW_RS[1][1], COLORS['LF'], 'LF-KLE', ls='--')
-plot_gp_confidence_interval(ax[1, 2], xbyD, stats_UW_RS[2][0], stats_UW_RS[2][1], COLORS['HF'], 'HF-KLE', hatching='//', ls='-.')
+
 
 # fig.suptitle("Forward UQ Results", fontsize=TITLE_FS, y=1.05)
 for i, a in enumerate(ax[1, :]):
@@ -251,7 +255,7 @@ for a in ax[:, 2]:
 
 
 handles, labels = ax[0, 0].get_legend_handles_labels()
-fig.legend(handles, labels, loc='upper center', fontsize=LEGEND_FS, ncol=3, bbox_to_anchor=(0.5, -0.02), frameon=False)
+fig.legend([handles[0], handles[2], handles[1]], [labels[0], labels[2], labels[1]], loc='upper center', fontsize=22, ncol=3, bbox_to_anchor=(0.5, -0.02), frameon=False)
 
 fig.tight_layout()
 # if saveFig:

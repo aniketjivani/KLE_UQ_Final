@@ -123,8 +123,13 @@ train_budget_errs_final = train_budget_errs + rem_budget_errs2
 
 plt.hist(holdout_test_errs[:, 5], alpha=0.5, color="royalblue", label="AL Prediction Error")
 plt.hist(holdout_test_errs_random[:, 5], alpha=0.3, color="darkorange", label="RS Prediction Error")
+plt.xticks(fontsize=16)
+plt.yticks(fontsize=16)
 plt.legend(fontsize=16)
 plt.xlabel("Relative Error (all QoIs)", fontsize=16)
+
+plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/hist_avg_rel_err_all_qois.png", bbox_inches='tight', dpi=200)
+
 # if saveFig:
 #     plt.savefig("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/figs_jet/hist_avg_rel_err_all_qois.jpg", bbox_inches='tight', dpi=200)
 

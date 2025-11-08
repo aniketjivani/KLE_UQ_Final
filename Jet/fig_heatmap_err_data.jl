@@ -115,6 +115,12 @@ function getTestErrors(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, 
 	QLF, λLF, bβLF, regLF, YMeanLF = buildKLE(xi_LF, yLF_data, grid; kle_kwargs...)
 	QDelta, λDelta, bβDelta, regDelta, YMeanDelta = buildKLE(xi_HF, yDelta_data, grid; kle_kwargs_Δ...)
 	QHF, λHF, bβHF, regHF, YMeanHF = buildKLE(xi_HF, yHF_data, grid; kle_kwargs...)
+
+    # print eigenvalues.
+    # println("LF eigenvalues: ", λLF)
+    # println("Delta eigenvalues: ", λDelta)
+    # println("HF eigenvalues: ", λHF)
+
 	testErrors = []
 	for i in 1:size(test_points, 1)
 		ΨTest_LF = PrepCaseA(test_points[i, :]'; order=kle_kwargs.order, dims=kle_kwargs.dims)'
@@ -136,7 +142,7 @@ function getTestErrors(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, 
             push!(testErrors, ϵ2(hf_oracle[:, i], yPredicted[:, i]))
         end
 	end
-	return yPredicted, yLFPred, yHFPred, testErrors
+	return yPredicted, yLFPred, yHFPred, testErrors, length(λLF), length(λDelta)
 end
 
 function getLOOErrors(xi_LF, yLF_data, HF_LF_ID, xi_HF, yHF_data, yDelta_data, grid)
@@ -171,10 +177,17 @@ batch_size = 5
 # specify type Vector{Vector{Float64}}
 all_batch_rem_budget_errs = []
 
-for bID in 0:(n_batches - 1)
+modesLF_V_all_gp = []
+modesDelta_V_all_gp = []
+modesLF_UU_all_gp = []
+modesDelta_UU_all_gp = []
+modesLF_UW_all_gp = []
+modesDelta_UW_all_gp = []
+
+for bID in 0:(n_batches)
     println("Batch ID: $bID")
     println("Using first $(nLF_Pilot + bID * batch_size) LF points and first $(nHF_Pilot + bID * batch_size) HF points.")
-    _, _, _, testErrors_V = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+    _, _, _, testErrors_V, modesLF_V, modesDelta_V = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
     yLF_V_All[:, 1:(nLF_Pilot + bID * batch_size)],
     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
@@ -184,7 +197,7 @@ for bID in 0:(n_batches - 1)
     hf_oracle=yHF_V_All[:, (nHF_Pilot + bID * batch_size + 1):end],
     test_points=xi_HF_all[(nHF_Pilot + bID * batch_size + 1):end, :]);
 
-    _, _, _, testErrors_UU = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+    _, _, _, testErrors_UU, modesLF_UU, modesDelta_UU = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
     yLF_UU_All[:, 1:(nLF_Pilot + bID * batch_size)],
     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
@@ -194,7 +207,7 @@ for bID in 0:(n_batches - 1)
     hf_oracle=yHF_UU_All[:, (nHF_Pilot + bID * batch_size + 1):end],
     test_points=xi_HF_all[(nHF_Pilot + bID * batch_size + 1):end, :]);
 
-    _, _, _, testErrors_UW = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
+    _, _, _, testErrors_UW, modesLF_UW, modesDelta_UW = getTestErrors(xi_LF_all[1:(nLF_Pilot + bID * batch_size), :],
     yLF_UW_All[:, 1:(nLF_Pilot + bID * batch_size)],
     HFLF_ID_all[1:(nHF_Pilot + bID * batch_size)],
     xi_HF_all[1:(nHF_Pilot + bID * batch_size), :],
@@ -204,8 +217,17 @@ for bID in 0:(n_batches - 1)
     hf_oracle=yHF_UW_All[:, (nHF_Pilot + bID * batch_size + 1):end],
     test_points=xi_HF_all[(nHF_Pilot + bID * batch_size + 1):end, :]);
 
-    mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
-    push!(all_batch_rem_budget_errs, mean_test_errs)
+    if bID <= (n_batches - 1)
+        mean_test_errs = mean([testErrors_V testErrors_UU testErrors_UW], dims=2)
+        push!(all_batch_rem_budget_errs, mean_test_errs)
+    end
+
+    push!(modesLF_V_all_gp, modesLF_V)
+    push!(modesDelta_V_all_gp, modesDelta_V)
+    push!(modesLF_UU_all_gp, modesLF_UU)
+    push!(modesDelta_UU_all_gp, modesDelta_UU)
+    push!(modesLF_UW_all_gp, modesLF_UW)
+    push!(modesDelta_UW_all_gp, modesDelta_UW)
 end
 
 # open("/Users/ajivani/Desktop/Research/KLE_UQ_Final/Jet/data/HeatmapErrDataRemBudget_AL.jls", "w") do io
